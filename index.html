@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Death Game - Number Average</title>
+    <link rel="stylesheet" href="styles.css">
+    <audio id="bgMusic" loop>
+        <source src="audio/background.mp3" type="audio/mpeg">
+    </audio>
+    <audio id="buttonClick">
+        <source src="audio/click.mp3" type="audio/mpeg">
+    </audio>
+    <audio id="submitSound">
+        <source src="audio/submit.mp3" type="audio/mpeg">
+    </audio>
+    <audio id="winnerSound">
+        <source src="audio/winner.mp3" type="audio/mpeg">
+    </audio>
+    <audio id="eliminationSound">
+        <source src="audio/elimination.mp3" type="audio/mpeg">
+    </audio>
+</head>
+<body>
+    <div class="game-container">
+        <div id="login-screen" class="screen active">
+            <h1>Death Game - Number Average</h1>
+            <div class="audio-controls">
+                <label for="volume">Volume:</label>
+                <input type="range" id="volume" min="0" max="100" value="50">
+                <button id="toggleMusic" class="audio-btn">🔊</button>
+            </div>
+            <div class="player-slots">
+                <div class="player-slot">
+                    <div class="input-group">
+                        <input type="text" placeholder="Player 1 Name" class="player-name">
+                        <button class="ready-btn">Ready</button>
+                    </div>
+                    <button class="bot-btn">Add Bot</button>
+                </div>
+                <div class="player-slot">
+                    <div class="input-group">
+                        <input type="text" placeholder="Player 2 Name" class="player-name">
+                        <button class="ready-btn">Ready</button>
+                    </div>
+                    <button class="bot-btn">Add Bot</button>
+                </div>
+                <div class="player-slot">
+                    <div class="input-group">
+                        <input type="text" placeholder="Player 3 Name" class="player-name">
+                        <button class="ready-btn">Ready</button>
+                    </div>
+                    <button class="bot-btn">Add Bot</button>
+                </div>
+                <div class="player-slot">
+                    <div class="input-group">
+                        <input type="text" placeholder="Player 4 Name" class="player-name">
+                        <button class="ready-btn">Ready</button>
+                    </div>
+                    <button class="bot-btn">Add Bot</button>
+                </div>
+                <div class="player-slot">
+                    <div class="input-group">
+                        <input type="text" placeholder="Player 5 Name" class="player-name">
+                        <button class="ready-btn">Ready</button>
+                    </div>
+                    <button class="bot-btn">Add Bot</button>
+                </div>
+            </div>
+            <div class="game-status">
+                <p>Waiting for players... (<span id="players-ready">0</span>/5)</p>
+            </div>
+            <button id="start-game" disabled>Start Game</button>
+        </div>
+
+        <div id="game-screen" class="screen">
+            <div class="game-info">
+                <h2>Round <span id="round-number">1</span></h2>
+                <div id="timer">Time remaining: <span id="time">60</span>s</div>
+                <div id="current-rules"></div>
+            </div>
+            <div class="players-grid"></div>
+            <div class="number-input">
+                <!-- Number table will be created here by JavaScript -->
+            </div>
+        </div>
+    </div>
+    <script src="game.js"></script>
+</body>
+</html> 
