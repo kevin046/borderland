@@ -215,9 +215,12 @@ class DeathGame {
         const numberInput = document.querySelector('.number-input');
         numberInput.innerHTML = `
             <div class="number-table">
+                <div class="table-header">
+                    <div class="table-title">Select a number (0-100)</div>
+                    <button id="submit-number" disabled>Submit</button>
+                </div>
                 <div class="number-grid"></div>
             </div>
-            <button id="submit-number" disabled>Submit</button>
         `;
 
         const numberGrid = numberInput.querySelector('.number-grid');
@@ -589,7 +592,6 @@ class DeathGame {
                 <div class="winner-announcement">
                     <h3>${winner.name} is the Winner!</h3>
                     <p>Congratulations on surviving the Death Game!</p>
-                    <button id="view-history" class="history-btn">View Game History</button>
                     <button id="return-lobby" class="return-btn">Return to Lobby</button>
                 </div>
             </div>
@@ -604,11 +606,6 @@ class DeathGame {
         this.sounds.bgMusic.pause();
         this.sounds.bgMusic.currentTime = 0;
         this.playSound('winner');
-
-        // Add event listeners
-        document.getElementById('view-history').addEventListener('click', () => {
-            this.showHistory();
-        });
 
         document.getElementById('return-lobby').addEventListener('click', () => {
             this.resetGame();
