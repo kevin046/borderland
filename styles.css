@@ -124,6 +124,7 @@ h1 {
     padding: 15px;
     border-radius: 5px;
     text-align: center;
+    position: relative;
 }
 
 .player-card.eliminated {
@@ -582,4 +583,29 @@ h1 {
 .final-results-content button {
     margin: 5px;
     min-width: 200px;
+}
+
+.you-indicator {
+    background-color: #4CAF50;
+    color: white;
+    padding: 2px 8px;
+    border-radius: 3px;
+    font-size: 0.8em;
+    margin-left: 5px;
+}
+
+.waiting-message {
+    text-align: center;
+    padding: 20px;
+    background-color: #2a2a2a;
+    border-radius: 10px;
+    margin: 20px auto;
+    max-width: 800px;
+    font-size: 1.2em;
+    color: #888;
+}
+
+.player-card .points {
+    font-size: 1.2em;
+    margin: 10px 0;
 } 

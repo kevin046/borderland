@@ -8,6 +8,7 @@ class DeathGame {
         this.timer = null;
         this.playerNumbers = {}; // Store submitted numbers
         this.roundHistory = []; // Store history of all rounds
+        this.selectedSpot = null;
         this.setupAudio();
         this.initializeEventListeners();
     }
@@ -66,9 +67,9 @@ class DeathGame {
             startButton.addEventListener('click', () => this.startGame());
         }
 
-        const readyButtons = document.querySelectorAll('.ready-btn');
-        readyButtons.forEach((btn, index) => {
-            btn.addEventListener('click', () => this.togglePlayerReady(index));
+        const joinButtons = document.querySelectorAll('.join-btn');
+        joinButtons.forEach((btn, index) => {
+            btn.addEventListener('click', () => this.showNameModal(index));
         });
 
         const botButtons = document.querySelectorAll('.bot-btn');
@@ -100,28 +101,55 @@ class DeathGame {
                 }
             });
         }
+
+        // Name modal buttons
+        document.getElementById('confirm-name').addEventListener('click', () => this.confirmJoin());
+        document.getElementById('cancel-join').addEventListener('click', () => this.hideNameModal());
     }
 
-    togglePlayerReady(index) {
-        this.playSound('buttonClick');
-        const button = document.querySelectorAll('.ready-btn')[index];
-        const nameInput = document.querySelectorAll('.player-name')[index];
-        
-        if (button.classList.contains('active')) {
-            button.classList.remove('active');
-            nameInput.disabled = false;
-            this.players = this.players.filter(p => p.index !== index);
-        } else if (nameInput.value.trim() !== '') {
-            button.classList.add('active');
-            nameInput.disabled = true;
-            this.players.push({
-                index,
-                name: nameInput.value.trim(),
-                points: 0,
-                isAlive: true
-            });
+    showNameModal(spotIndex) {
+        if (this.players.some(p => p.index === spotIndex)) {
+            return; // Spot is already taken
         }
+        this.selectedSpot = spotIndex;
+        const modal = document.getElementById('name-modal');
+        const input = document.getElementById('player-name-input');
+        input.value = '';
+        modal.classList.add('active');
+        input.focus();
+    }
 
+    hideNameModal() {
+        const modal = document.getElementById('name-modal');
+        modal.classList.remove('active');
+        this.selectedSpot = null;
+    }
+
+    confirmJoin() {
+        const nameInput = document.getElementById('player-name-input');
+        const name = nameInput.value.trim();
+        
+        if (name && this.selectedSpot !== null) {
+            this.addPlayer(this.selectedSpot, name);
+            this.hideNameModal();
+        }
+    }
+
+    addPlayer(index, name) {
+        this.players.push({
+            index,
+            name,
+            points: 0,
+            isAlive: true,
+            isBot: false
+        });
+
+        // Update UI
+        const joinBtn = document.querySelectorAll('.join-btn')[index];
+        joinBtn.textContent = name;
+        joinBtn.classList.add('occupied');
+        
+        // Update player count
         document.getElementById('players-ready').textContent = this.players.length;
         document.getElementById('start-game').disabled = this.players.length !== this.maxPlayers;
     }
@@ -199,12 +227,18 @@ class DeathGame {
         const grid = document.querySelector('.players-grid');
         grid.innerHTML = '';
 
+        // Find current human player
+        const humanPlayer = this.players.find(p => !p.isBot && p.isAlive);
+
         this.players.forEach(player => {
             const card = document.createElement('div');
             card.className = `player-card ${player.isAlive ? '' : 'eliminated'} ${player.isBot ? 'bot' : ''}`;
+            // Only show points for eliminated players or when round ends
+            const showPoints = !player.isAlive || this.roundEnded;
             card.innerHTML = `
                 <h3>${player.name}</h3>
-                <p>Points: ${player.points}</p>
+                <p>Points: ${showPoints ? player.points : '???'}</p>
+                ${player === humanPlayer ? '<span class="you-indicator">YOU</span>' : ''}
                 ${player.isBot ? '<span class="bot-label">(BOT)</span>' : ''}
             `;
             grid.appendChild(card);
@@ -212,11 +246,17 @@ class DeathGame {
     }
 
     createNumberTable() {
+        // Only show number table to human players who are alive
+        const humanPlayer = this.players.find(p => !p.isBot && p.isAlive);
+        if (!humanPlayer) {
+            return; // Don't show number table if no human player or player is eliminated
+        }
+
         const numberInput = document.querySelector('.number-input');
         numberInput.innerHTML = `
             <div class="number-table">
                 <div class="table-header">
-                    <div class="table-title">Select a number (0-100)</div>
+                    <div class="table-title">${humanPlayer.name}, select your number (0-100)</div>
                     <button id="submit-number" disabled>Submit</button>
                 </div>
                 <div class="number-grid"></div>
@@ -270,7 +310,6 @@ class DeathGame {
     }
 
     submitNumber() {
-        this.playSound('submit');
         if (typeof this.selectedNumber === 'undefined') {
             alert('Please select a number');
             return;
@@ -280,6 +319,12 @@ class DeathGame {
         const humanPlayer = this.players.find(p => !p.isBot && p.isAlive);
         if (humanPlayer) {
             this.playerNumbers[humanPlayer.index] = this.selectedNumber;
+            // Hide the number table after submission
+            document.querySelector('.number-input').innerHTML = `
+                <div class="waiting-message">
+                    Waiting for other players...
+                </div>
+            `;
         }
 
         // Generate bot numbers
