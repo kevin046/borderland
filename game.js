@@ -9,6 +9,8 @@ class DeathGame {
         this.playerNumbers = {}; // Store submitted numbers
         this.roundHistory = []; // Store history of all rounds
         this.selectedSpot = null;
+        this.currentPlayer = null; // Store current player's spot
+        this.gameStarted = false; // Add flag to track if game has started
         this.setupAudio();
         this.initializeEventListeners();
     }
@@ -108,9 +110,33 @@ class DeathGame {
     }
 
     showNameModal(spotIndex) {
-        if (this.players.some(p => p.index === spotIndex)) {
-            return; // Spot is already taken
+        // Don't allow changing spots after game starts
+        if (this.gameStarted) {
+            return;
         }
+
+        // If spot is taken by a bot, remove it
+        const existingBot = this.players.find(p => p.index === spotIndex && p.isBot);
+        if (existingBot) {
+            this.removePlayerFromSpot(spotIndex);
+        }
+
+        // If player already has a name, move them directly
+        if (this.currentPlayer !== null) {
+            const player = this.players.find(p => p.index === this.currentPlayer);
+            if (player && !this.players.some(p => p.index === spotIndex)) {
+                const playerName = player.name;
+                this.removePlayerFromSpot(this.currentPlayer);
+                this.addPlayer(spotIndex, playerName);
+                return;
+            }
+        }
+
+        if (this.players.some(p => p.index === spotIndex)) {
+            alert('This spot is already taken!');
+            return;
+        }
+
         this.selectedSpot = spotIndex;
         const modal = document.getElementById('name-modal');
         const input = document.getElementById('player-name-input');
@@ -144,10 +170,24 @@ class DeathGame {
             isBot: false
         });
 
+        // Set current player
+        this.currentPlayer = index;
+
         // Update UI
         const joinBtn = document.querySelectorAll('.join-btn')[index];
-        joinBtn.textContent = name;
+        joinBtn.innerHTML = `
+            <span class="status-icon">👤</span>
+            <span class="player-name">${name}</span>
+            <span class="spot-number">#${index + 1}</span>
+        `;
         joinBtn.classList.add('occupied');
+
+        // Disable other join buttons for this player
+        document.querySelectorAll('.join-btn').forEach((btn, i) => {
+            if (i !== index && !this.players.some(p => p.index === i)) {
+                btn.classList.add('other-player');
+            }
+        });
         
         // Update player count
         document.getElementById('players-ready').textContent = this.players.length;
@@ -155,6 +195,7 @@ class DeathGame {
     }
 
     startGame() {
+        this.gameStarted = true;
         // Start background music with error handling
         const playPromise = this.sounds.bgMusic.play();
         
@@ -233,11 +274,9 @@ class DeathGame {
         this.players.forEach(player => {
             const card = document.createElement('div');
             card.className = `player-card ${player.isAlive ? '' : 'eliminated'} ${player.isBot ? 'bot' : ''}`;
-            // Only show points for eliminated players or when round ends
-            const showPoints = !player.isAlive || this.roundEnded;
             card.innerHTML = `
                 <h3>${player.name}</h3>
-                <p>Points: ${showPoints ? player.points : '???'}</p>
+                <p class="points">Points: ${player.points}</p>
                 ${player === humanPlayer ? '<span class="you-indicator">YOU</span>' : ''}
                 ${player.isBot ? '<span class="bot-label">(BOT)</span>' : ''}
             `;
@@ -319,12 +358,15 @@ class DeathGame {
         const humanPlayer = this.players.find(p => !p.isBot && p.isAlive);
         if (humanPlayer) {
             this.playerNumbers[humanPlayer.index] = this.selectedNumber;
-            // Hide the number table after submission
-            document.querySelector('.number-input').innerHTML = `
-                <div class="waiting-message">
-                    Waiting for other players...
-                </div>
-            `;
+            // Replace the entire number input area with waiting message
+            const numberInput = document.querySelector('.number-input');
+            if (numberInput) {
+                numberInput.innerHTML = `
+                    <div class="waiting-message">
+                        Waiting for other players...
+                    </div>
+                `;
+            }
         }
 
         // Generate bot numbers
@@ -334,11 +376,6 @@ class DeathGame {
                 this.playerNumbers[player.index] = this.calculateBotNumber(alivePlayers);
             }
         });
-
-        // Disable number selection after submission
-        const numberCells = document.querySelectorAll('.number-cell');
-        numberCells.forEach(cell => cell.style.pointerEvents = 'none');
-        document.getElementById('submit-number').disabled = true;
 
         // Since bots submit immediately after human player, we can calculate results right away
         clearInterval(this.timer);
@@ -596,15 +633,17 @@ class DeathGame {
     }
 
     addBot(index) {
+        // Don't allow adding bot to current player's spot
+        if (index === this.currentPlayer) {
+            return;
+        }
+
         this.playSound('buttonClick');
-        const nameInput = document.querySelectorAll('.player-name')[index];
-        const readyBtn = document.querySelectorAll('.ready-btn')[index];
         const botBtn = document.querySelectorAll('.bot-btn')[index];
+        const joinBtn = document.querySelectorAll('.join-btn')[index];
 
         // Generate bot name
         const botName = `Bot ${index + 1}`;
-        nameInput.value = botName;
-        nameInput.disabled = true;
         
         // Add bot to players
         this.players.push({
@@ -616,8 +655,15 @@ class DeathGame {
         });
 
         // Update UI
-        readyBtn.classList.add('active');
+        joinBtn.innerHTML = `
+            <span class="status-icon">🤖</span>
+            <span class="player-name">${botName}</span>
+            <span class="spot-number">#${index + 1}</span>
+            <span class="remove-bot" onclick="event.stopPropagation(); window.game.removePlayerFromSpot(${index})">❌</span>
+        `;
+        joinBtn.classList.add('occupied');
         botBtn.style.display = 'none';
+        
         document.getElementById('players-ready').textContent = this.players.length;
         document.getElementById('start-game').disabled = this.players.length !== this.maxPlayers;
     }
@@ -713,6 +759,8 @@ class DeathGame {
         this.remainingTime = this.timeLimit;
 
         this.roundHistory = []; // Clear round history
+        this.gameStarted = false;
+        this.currentPlayer = null;
     }
 
     showHistory() {
@@ -784,6 +832,31 @@ class DeathGame {
                 </div>
             </div>
         `;
+    }
+
+    removePlayerFromSpot(index) {
+        // Remove player from players array
+        this.players = this.players.filter(p => p.index !== index);
+        
+        // Reset the join button
+        const joinBtn = document.querySelectorAll('.join-btn')[index];
+        joinBtn.innerHTML = `Join Spot ${index + 1}`;
+        joinBtn.classList.remove('occupied');
+        
+        // Show the bot button again
+        const botBtn = document.querySelectorAll('.bot-btn')[index];
+        botBtn.style.display = 'block';
+        
+        // Enable all join buttons
+        document.querySelectorAll('.join-btn').forEach(btn => {
+            btn.classList.remove('other-player');
+        });
+        
+        // Update player count
+        document.getElementById('players-ready').textContent = this.players.length;
+        document.getElementById('start-game').disabled = this.players.length !== this.maxPlayers;
+        
+        this.currentPlayer = null;
     }
 }
 
