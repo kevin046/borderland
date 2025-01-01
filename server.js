@@ -12,35 +12,25 @@ const pusher = new Pusher({
 
 const app = express();
 
-// CORS configuration
-const corsOptions = {
-    origin: function(origin, callback) {
-        const allowedOrigins = [
-            'http://localhost:3000',
-            'https://borderland-sigma.vercel.app',
-            'https://borderland-game.vercel.app'
-        ];
-        // Allow requests with no origin (like mobile apps or curl requests)
-        if (!origin) return callback(null, true);
-        if (allowedOrigins.indexOf(origin) === -1) {
-            return callback(new Error('CORS policy violation'), false);
-        }
-        return callback(null, true);
-    },
-    methods: ['GET', 'POST', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization', 'Accept'],
-    exposedHeaders: ['Content-Length', 'Content-Type'],
-    credentials: true,
-    optionsSuccessStatus: 200,
-    maxAge: 3600
-};
+// Simple CORS middleware
+app.use((req, res, next) => {
+    res.header('Access-Control-Allow-Origin', 'https://borderland-sigma.vercel.app');
+    res.header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+    res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, Accept');
+    res.header('Access-Control-Allow-Credentials', 'true');
+    
+    // Handle preflight requests
+    if (req.method === 'OPTIONS') {
+        return res.status(200).end();
+    }
+    next();
+});
 
-// Apply CORS middleware
-app.use(cors(corsOptions));
+// Parse JSON bodies
+app.use(express.json());
 
 // Serve static files
 app.use(express.static(path.join(__dirname, 'public')));
-app.use(express.json());
 
 // Serve index.html for the root route
 app.get('/', (req, res) => {

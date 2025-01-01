@@ -74,10 +74,10 @@ class DeathGame {
         fetch(`${this.serverUrl}/create-room`, {
             method: 'POST',
             headers: {
-                'Content-Type': 'application/json',
-                'Accept': 'application/json'
+                'Content-Type': 'application/json'
             },
             credentials: 'include',
+            mode: 'cors',
             body: JSON.stringify({ roomId })
         })
         .then(response => {
@@ -111,10 +111,10 @@ class DeathGame {
         fetch(`${this.serverUrl}/join-room`, {
             method: 'POST',
             headers: {
-                'Content-Type': 'application/json',
-                'Accept': 'application/json'
+                'Content-Type': 'application/json'
             },
             credentials: 'include',
+            mode: 'cors',
             body: JSON.stringify({ roomId })
         })
         .then(response => {
@@ -191,10 +191,10 @@ class DeathGame {
             fetch(`${this.serverUrl}/join`, {
                 method: 'POST',
                 headers: {
-                    'Content-Type': 'application/json',
-                    'Accept': 'application/json'
+                    'Content-Type': 'application/json'
                 },
                 credentials: 'include',
+                mode: 'cors',
                 body: JSON.stringify({
                     roomId: this.roomId,
                     playerName: name,
@@ -240,10 +240,10 @@ class DeathGame {
         fetch(`${this.serverUrl}/join`, {
             method: 'POST',
             headers: {
-                'Content-Type': 'application/json',
-                'Accept': 'application/json'
+                'Content-Type': 'application/json'
             },
             credentials: 'include',
+            mode: 'cors',
             body: JSON.stringify({
                 roomId: this.roomId,
                 playerName: botName,
@@ -286,10 +286,10 @@ class DeathGame {
         fetch(`${this.serverUrl}/submit-number`, {
             method: 'POST',
             headers: {
-                'Content-Type': 'application/json',
-                'Accept': 'application/json'
+                'Content-Type': 'application/json'
             },
             credentials: 'include',
+            mode: 'cors',
             body: JSON.stringify({
                 roomId: this.roomId,
                 gameId: this.gameId,
@@ -339,10 +339,10 @@ class DeathGame {
         fetch(`${this.serverUrl}/leave`, {
             method: 'POST',
             headers: {
-                'Content-Type': 'application/json',
-                'Accept': 'application/json'
+                'Content-Type': 'application/json'
             },
             credentials: 'include',
+            mode: 'cors',
             body: JSON.stringify({
                 roomId: this.roomId,
                 playerId: this.playerId,
