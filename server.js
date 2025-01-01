@@ -14,7 +14,12 @@ const app = express();
 
 // CORS configuration
 const corsOptions = {
-    origin: ['http://localhost:3000', 'https://borderland-sigma.vercel.app', 'https://borderland-sigma.vercel.app/'],
+    origin: [
+        'http://localhost:3000',
+        'https://borderland-sigma.vercel.app',
+        'https://borderland-sigma.vercel.app/',
+        'https://borderland-game.vercel.app'
+    ],
     methods: ['GET', 'POST', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization'],
     credentials: true,
@@ -26,7 +31,16 @@ app.use(cors(corsOptions));
 
 // Add CORS headers to all responses
 app.use((req, res, next) => {
-    res.header('Access-Control-Allow-Origin', req.headers.origin);
+    const allowedOrigins = [
+        'http://localhost:3000',
+        'https://borderland-sigma.vercel.app',
+        'https://borderland-sigma.vercel.app/',
+        'https://borderland-game.vercel.app'
+    ];
+    const origin = req.headers.origin;
+    if (allowedOrigins.includes(origin)) {
+        res.header('Access-Control-Allow-Origin', origin);
+    }
     res.header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
     res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization');
     res.header('Access-Control-Allow-Credentials', true);
@@ -47,21 +61,49 @@ app.get('/', (req, res) => {
 
 class GameServer {
     constructor() {
-        this.games = new Map();
-        this.waitingRoom = [];
+        this.rooms = new Map(); // Map of roomId -> { games: Map, waitingRoom: [] }
     }
 
-    handleJoin(playerName, spotIndex, isBot = false) {
+    createRoom(roomId) {
+        if (this.rooms.has(roomId)) {
+            throw new Error('Room already exists');
+        }
+        this.rooms.set(roomId, {
+            games: new Map(),
+            waitingRoom: []
+        });
+        return { success: true, roomId };
+    }
+
+    joinRoom(roomId) {
+        const room = this.rooms.get(roomId);
+        if (!room) {
+            throw new Error('Room not found');
+        }
+        return { 
+            success: true, 
+            roomId,
+            currentPlayers: room.waitingRoom.length,
+            maxPlayers: 5
+        };
+    }
+
+    handleJoin(roomId, playerName, spotIndex, isBot = false) {
+        const room = this.rooms.get(roomId);
+        if (!room) {
+            throw new Error('Room not found');
+        }
+
         const playerId = Date.now().toString();
-        console.log('Player joining:', { playerName, spotIndex, playerId, isBot });
+        console.log('Player joining:', { roomId, playerName, spotIndex, playerId, isBot });
 
         // Check if spot is already taken
-        if (this.waitingRoom.some(p => p.spotIndex === spotIndex)) {
+        if (room.waitingRoom.some(p => p.spotIndex === spotIndex)) {
             throw new Error('Spot already taken');
         }
 
         // Remove any existing entries for this player name
-        this.waitingRoom = this.waitingRoom.filter(p => p.name !== playerName);
+        room.waitingRoom = room.waitingRoom.filter(p => p.name !== playerName);
 
         const player = {
             id: playerId,
@@ -70,49 +112,65 @@ class GameServer {
             isBot: isBot
         };
 
-        this.waitingRoom.push(player);
-        console.log('Current waiting room:', this.waitingRoom);
+        room.waitingRoom.push(player);
+        console.log('Current waiting room:', room.waitingRoom);
 
         // Broadcast waiting room update
-        pusher.trigger('game-channel', 'waiting-room-update', {
-            players: this.waitingRoom,
-            currentCount: this.waitingRoom.length,
+        pusher.trigger(`game-channel-${roomId}`, 'waiting-room-update', {
+            players: room.waitingRoom,
+            currentCount: room.waitingRoom.length,
             maxPlayers: 5
         });
 
         // If we have enough players, start a new game
-        if (this.waitingRoom.length >= 5) {
-            console.log('Starting new game with players:', this.waitingRoom);
-            const gamePlayers = [...this.waitingRoom]; // Create a copy
-            const gameId = this.startNewGame(gamePlayers);
-            this.waitingRoom = []; // Clear waiting room after starting game
-            return { playerId, gameId }; // Return both IDs
+        if (room.waitingRoom.length >= 5) {
+            console.log('Starting new game with players:', room.waitingRoom);
+            const gamePlayers = [...room.waitingRoom]; // Create a copy
+            const gameId = this.startNewGame(roomId, gamePlayers);
+            room.waitingRoom = []; // Clear waiting room after starting game
+            return { playerId, gameId, roomId }; // Return all IDs
         }
 
-        return { playerId }; // Return just the player ID if game hasn't started
+        return { playerId, roomId }; // Return both IDs
     }
 
-    handleLeave(playerId, spotIndex) {
-        console.log('Player leaving:', { playerId, spotIndex });
+    handleLeave(roomId, playerId, spotIndex) {
+        const room = this.rooms.get(roomId);
+        if (!room) {
+            throw new Error('Room not found');
+        }
+
+        console.log('Player leaving:', { roomId, playerId, spotIndex });
 
         // Remove player from waiting room
-        this.waitingRoom = this.waitingRoom.filter(p => p.id !== playerId);
+        room.waitingRoom = room.waitingRoom.filter(p => p.id !== playerId);
         
-        console.log('Updated waiting room:', this.waitingRoom);
+        console.log('Updated waiting room:', room.waitingRoom);
 
         // Broadcast waiting room update
-        pusher.trigger('game-channel', 'waiting-room-update', {
-            players: this.waitingRoom,
-            currentCount: this.waitingRoom.length,
+        pusher.trigger(`game-channel-${roomId}`, 'waiting-room-update', {
+            players: room.waitingRoom,
+            currentCount: room.waitingRoom.length,
             maxPlayers: 5
         });
+
+        // If room is empty, delete it
+        if (room.waitingRoom.length === 0 && room.games.size === 0) {
+            this.rooms.delete(roomId);
+            console.log('Deleted empty room:', roomId);
+        }
 
         return { success: true };
     }
 
-    startNewGame(players) {
+    startNewGame(roomId, players) {
+        const room = this.rooms.get(roomId);
+        if (!room) {
+            throw new Error('Room not found');
+        }
+
         const gameId = Date.now().toString();
-        console.log('Creating new game:', { gameId, playerCount: players.length });
+        console.log('Creating new game:', { roomId, gameId, playerCount: players.length });
 
         const game = {
             id: gameId,
@@ -129,18 +187,19 @@ class GameServer {
             state: 'active'
         };
 
-        this.games.set(gameId, game);
+        room.games.set(gameId, game);
 
         // Add a small delay before sending the game start event
         setTimeout(() => {
             console.log('Broadcasting game start:', {
+                roomId,
                 gameId: gameId,
                 playerCount: players.length,
                 players: game.players.map(p => ({ id: p.id, name: p.name, spotIndex: p.spotIndex, isBot: p.isBot }))
             });
 
             // Notify game start
-            pusher.trigger('game-channel', 'game-start', {
+            pusher.trigger(`game-channel-${roomId}`, 'game-start', {
                 gameId: gameId,
                 players: game.players
             });
@@ -149,8 +208,13 @@ class GameServer {
         return gameId;
     }
 
-    handleNumberSubmit(gameId, playerId, number) {
-        const game = this.games.get(gameId);
+    handleNumberSubmit(roomId, gameId, playerId, number) {
+        const room = this.rooms.get(roomId);
+        if (!room) {
+            throw new Error('Room not found');
+        }
+
+        const game = room.games.get(gameId);
         if (!game) {
             console.error('Game not found:', gameId);
             throw new Error('Game not found');
@@ -497,32 +561,54 @@ class GameServer {
 const gameServer = new GameServer();
 
 // API endpoints with error handling
+app.post('/create-room', (req, res) => {
+    try {
+        const { roomId } = req.body;
+        const result = gameServer.createRoom(roomId);
+        res.json(result);
+    } catch (error) {
+        console.error('Create room error:', error);
+        res.status(400).json({ error: error.message });
+    }
+});
+
+app.post('/join-room', (req, res) => {
+    try {
+        const { roomId } = req.body;
+        const result = gameServer.joinRoom(roomId);
+        res.json(result);
+    } catch (error) {
+        console.error('Join room error:', error);
+        res.status(400).json({ error: error.message });
+    }
+});
+
 app.post('/join', (req, res) => {
     try {
-        const { playerName, spotIndex, isBot } = req.body;
-        const result = gameServer.handleJoin(playerName, spotIndex, isBot);
+        const { roomId, playerName, spotIndex, isBot } = req.body;
+        const result = gameServer.handleJoin(roomId, playerName, spotIndex, isBot);
         res.json(result);
     } catch (error) {
         console.error('Join error:', error);
-        res.status(500).json({ error: 'Failed to join game' });
+        res.status(400).json({ error: error.message });
     }
 });
 
 app.post('/leave', (req, res) => {
     try {
-        const { playerId, spotIndex } = req.body;
-        const result = gameServer.handleLeave(playerId, spotIndex);
+        const { roomId, playerId, spotIndex } = req.body;
+        const result = gameServer.handleLeave(roomId, playerId, spotIndex);
         res.json(result);
     } catch (error) {
         console.error('Leave error:', error);
-        res.status(500).json({ error: 'Failed to leave game' });
+        res.status(400).json({ error: error.message });
     }
 });
 
 app.post('/submit-number', (req, res) => {
     try {
-        const { gameId, playerId, number } = req.body;
-        const result = gameServer.handleNumberSubmit(gameId, playerId, number);
+        const { roomId, gameId, playerId, number } = req.body;
+        const result = gameServer.handleNumberSubmit(roomId, gameId, playerId, number);
         res.json(result);
     } catch (error) {
         console.error('Submit number error:', error);

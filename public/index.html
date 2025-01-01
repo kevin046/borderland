@@ -49,6 +49,58 @@
                 user-select: text;
             }
         }
+        
+        /* Room selection styles */
+        #room-screen {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            background: #2c3e50;
+            color: white;
+        }
+
+        .room-container {
+            background: #34495e;
+            padding: 2rem;
+            border-radius: 10px;
+            box-shadow: 0 0 20px rgba(0,0,0,0.3);
+            text-align: center;
+            max-width: 400px;
+            width: 90%;
+        }
+
+        .room-input {
+            width: 100%;
+            padding: 10px;
+            margin: 10px 0;
+            border: none;
+            border-radius: 5px;
+            font-size: 1.2em;
+            text-align: center;
+        }
+
+        .room-btn {
+            background: #e74c3c;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 1.1em;
+            margin: 5px;
+            transition: background 0.3s;
+        }
+
+        .room-btn:hover {
+            background: #c0392b;
+        }
+
+        .room-btn:disabled {
+            background: #7f8c8d;
+            cursor: not-allowed;
+        }
     </style>
     <audio id="bgMusic" loop>
         <source src="audio/background.mp3" type="audio/mpeg">
@@ -70,6 +122,19 @@
 <body>
     <div id="ios-status-bar-placeholder"></div>
     <div class="game-container">
+        <!-- Room Selection Screen -->
+        <div id="room-screen" class="active">
+            <div class="room-container">
+                <h2>Balance Scale</h2>
+                <p>Enter a room number to join or create a game:</p>
+                <input type="number" id="room-number" class="room-input" placeholder="Enter room number (1-9999)" min="1" max="9999">
+                <div>
+                    <button id="create-room" class="room-btn">Create Room</button>
+                    <button id="join-room" class="room-btn">Join Room</button>
+                </div>
+            </div>
+        </div>
+
         <div id="login-screen" class="screen active">
             <div class="game-header">
                 <svg class="balance-logo" viewBox="0 0 100 100" width="60" height="60">
