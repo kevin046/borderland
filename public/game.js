@@ -16,6 +16,7 @@ class DeathGame {
         this.selectedSpot = null;
         this.currentPlayer = null; // Store current player's spot
         this.gameStarted = false; // Add flag to track if game has started
+        this.serverUrl = 'http://localhost:3000'; // Add server URL
         this.setupAudio();
         this.initializeEventListeners();
     }
@@ -105,32 +106,57 @@ class DeathGame {
             return;
         }
 
-        // If player already has a spot, handle spot change
+        // If user already has a spot, they can only change their own spot
         if (this.currentPlayer !== null) {
-            // Remove player from current spot
-            this.removePlayerFromSpot(this.currentPlayer);
-            // Add player to new spot with same name
-            const playerName = this.players.find(p => p.index === this.currentPlayer)?.name;
-            if (playerName) {
-                this.selectedSpot = spotIndex;
-                fetch('/join', {
+            // Only allow changing their own spot
+            const currentPlayerData = this.players.find(p => p.index === this.currentPlayer);
+            if (currentPlayerData) {
+                // First, leave the current spot
+                fetch(`${this.serverUrl}/leave`, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json'
                     },
                     body: JSON.stringify({
-                        playerName: playerName,
-                        spotIndex: spotIndex
+                        playerId: this.playerId,
+                        spotIndex: this.currentPlayer
                     })
                 })
-                .then(response => response.json())
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error(`HTTP error! status: ${response.status}`);
+                    }
+                    return response.json();
+                })
+                .then(() => {
+                    // Then, join the new spot with the same name
+                    return fetch(`${this.serverUrl}/join`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({
+                            playerName: currentPlayerData.name,
+                            spotIndex: spotIndex
+                        })
+                    });
+                })
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error(`HTTP error! status: ${response.status}`);
+                    }
+                    return response.json();
+                })
                 .then(data => {
                     console.log('Spot change response:', data);
                     this.playerId = data.playerId;
                     if (data.gameId) {
                         this.gameId = data.gameId;
                     }
-                    this.addPlayer(spotIndex, playerName);
+                    // Remove player from old spot and add to new spot
+                    this.removePlayerFromSpot(this.currentPlayer);
+                    this.addPlayer(spotIndex, currentPlayerData.name);
+                    this.playSound('buttonClick');
                 })
                 .catch(error => {
                     console.error('Error changing spot:', error);
@@ -140,7 +166,7 @@ class DeathGame {
             return;
         }
 
-        // For new players, show the name modal
+        // For new players who don't have a spot yet
         this.selectedSpot = spotIndex;
         const modal = document.getElementById('name-modal');
         const input = document.getElementById('player-name-input');
@@ -160,7 +186,7 @@ class DeathGame {
         const name = nameInput.value.trim();
         
         if (name && this.selectedSpot !== null) {
-            fetch('/join', {
+            fetch(`${this.serverUrl}/join`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json'
@@ -170,7 +196,12 @@ class DeathGame {
                     spotIndex: this.selectedSpot
                 })
             })
-            .then(response => response.json())
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                return response.json();
+            })
             .then(data => {
                 console.log('Join response:', data);
                 this.playerId = data.playerId;
@@ -306,11 +337,20 @@ class DeathGame {
             submitButton.disabled = true;
         }
 
+        // Clear any existing timer
+        if (this.timer) {
+            clearInterval(this.timer);
+            this.timer = null;
+        }
+
         // Set time limit based on round type
         const alivePlayers = this.players.filter(p => p.isAlive).length;
         const isNewRuleRound = this.currentRound === 1 || 
             alivePlayers === 4 || alivePlayers === 3 || alivePlayers === 2;
-        this.remainingTime = isNewRuleRound ? 60 : 30;
+        
+        // Reset timer for new round
+        this.timeLimit = isNewRuleRound ? 60 : 30;
+        this.remainingTime = this.timeLimit;
 
         // Update the time display immediately
         const timeElement = document.getElementById('time');
@@ -318,11 +358,7 @@ class DeathGame {
             timeElement.textContent = this.remainingTime;
         }
 
-        // Clear any existing timer
-        if (this.timer) {
-            clearInterval(this.timer);
-        }
-
+        // Start new timer
         this.updateTimer();
         this.timer = setInterval(() => this.updateTimer(), 1000);
         this.updateRules();
@@ -333,14 +369,25 @@ class DeathGame {
             roundElement.textContent = this.currentRound;
         }
 
+        // Reset selected number for new round
+        this.selectedNumber = undefined;
+
         console.log('Round started:', {
             roundNumber: this.currentRound,
-            timeLimit: this.remainingTime,
+            timeLimit: this.timeLimit,
+            remainingTime: this.remainingTime,
             players: this.players
         });
     }
 
     updateTimer() {
+        if (this.remainingTime <= 0) {
+            clearInterval(this.timer);
+            this.timer = null;
+            this.endRound();
+            return;
+        }
+
         this.remainingTime--;
         const timeElement = document.getElementById('time');
         if (timeElement) {
@@ -356,11 +403,6 @@ class DeathGame {
                 warningDiv.textContent = 'Time running out! Number will be auto-selected!';
                 numberInput.appendChild(warningDiv);
             }
-        }
-        
-        if (this.remainingTime <= 0) {
-            clearInterval(this.timer);
-            this.endRound();
         }
     }
 
@@ -482,7 +524,13 @@ class DeathGame {
             return;
         }
 
-        fetch('/submit-number', {
+        // Disable the submit button immediately
+        const submitButton = document.getElementById('submit-number');
+        if (submitButton) {
+            submitButton.disabled = true;
+        }
+
+        fetch(`${this.serverUrl}/submit-number`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
@@ -493,7 +541,12 @@ class DeathGame {
                 number: this.selectedNumber
             })
         })
-        .then(response => response.json())
+        .then(response => {
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            return response.json();
+        })
         .then(data => {
             console.log('Number submission response:', data);
             // Show waiting message
@@ -501,14 +554,22 @@ class DeathGame {
             if (numberInput) {
                 numberInput.innerHTML = `
                     <div class="waiting-message">
+                        Your number ${this.selectedNumber} has been submitted.
+                        <br>
                         Waiting for other players...
                     </div>
                 `;
             }
+            // Reset selected number after successful submission
+            this.selectedNumber = undefined;
         })
         .catch(error => {
             console.error('Error submitting number:', error);
             alert('Failed to submit number. Please try again.');
+            // Re-enable the submit button on error
+            if (submitButton) {
+                submitButton.disabled = false;
+            }
         });
     }
 
@@ -543,21 +604,42 @@ class DeathGame {
     }
 
     showResultsCountdown(seconds, callback) {
+        // Clear any existing countdown
+        const existingCountdown = document.querySelector('.results-countdown');
+        if (existingCountdown) {
+            existingCountdown.remove();
+        }
+
         const countdownDiv = document.createElement('div');
         countdownDiv.className = 'results-countdown';
         countdownDiv.textContent = `Next round in ${seconds}s`;
-        document.querySelector('.game-info').appendChild(countdownDiv);
+        
+        // Find game-info or create it if it doesn't exist
+        let gameInfo = document.querySelector('.game-info');
+        if (!gameInfo) {
+            gameInfo = document.createElement('div');
+            gameInfo.className = 'game-info';
+            document.querySelector('.game-screen').appendChild(gameInfo);
+        }
+        
+        gameInfo.appendChild(countdownDiv);
 
-        const interval = setInterval(() => {
+        // Store the interval ID so we can clear it if needed
+        const intervalId = setInterval(() => {
             seconds--;
             if (seconds <= 0) {
-                clearInterval(interval);
+                clearInterval(intervalId);
                 countdownDiv.remove();
-                callback();
+                if (typeof callback === 'function') {
+                    callback();
+                }
             } else {
                 countdownDiv.textContent = `Next round in ${seconds}s`;
             }
         }, 1000);
+
+        // Store the interval ID in case we need to clear it early
+        this.countdownInterval = intervalId;
     }
 
     applyRoundRules(results, target) {
@@ -639,16 +721,30 @@ class DeathGame {
     }
 
     showRoundResults(results, target, hasExactMatch) {
-        // Clear previous results
-        const previousResults = document.querySelectorAll('.round-results, .results-countdown');
-        previousResults.forEach(el => el.remove());
+        console.log('Showing round results:', { results, target, hasExactMatch });
+        
+        // Clear previous results and any existing countdown
+        const previousElements = document.querySelectorAll('.round-results, .results-countdown');
+        previousElements.forEach(el => el.remove());
 
-        const numbers = Object.values(this.playerNumbers);
-        const average = numbers.reduce((a, b) => a + b, 0) / numbers.length;
+        // Clear any existing countdown interval
+        if (this.countdownInterval) {
+            clearInterval(this.countdownInterval);
+            this.countdownInterval = null;
+        }
 
-        // Find all winners (players with the same minimum distance)
-        const minDistance = results[0].distance;
-        const winners = results.filter(r => Math.abs(r.distance - minDistance) < 0.0001);
+        // Calculate average from valid numbers only
+        const validNumbers = results
+            .filter(r => r && r.number !== undefined && r.number !== null && !r.invalid)
+            .map(r => Number(r.number));
+            
+        const average = validNumbers.length > 0 
+            ? validNumbers.reduce((a, b) => a + b, 0) / validNumbers.length 
+            : 0;
+
+        // Find winners (players with isWinner flag or minimum distance)
+        const winners = results.filter(r => r.isWinner || 
+            (r && !r.invalid && r.distance === Math.min(...results.filter(res => !res.invalid).map(res => res.distance))));
 
         // Store round data in history
         this.roundHistory.push({
@@ -660,14 +756,42 @@ class DeathGame {
             winners: winners
         });
 
-        const resultsHTML = results.map(r => 
-            `<div class="player-result ${winners.includes(r) ? 'winner' : ''} ${r.invalid ? 'invalid' : ''}">
-                ${winners.includes(r) ? '👑 ' : ''}${r.player.name}: ${r.number} 
-                (distance: ${r.distance.toFixed(2)})
-                ${r.invalid ? ' ❌ Invalid (duplicate number)' : ''}
-                ${winners.includes(r) ? ' - Round Winner!' : ''}
-            </div>`
-        ).join('');
+        const resultsHTML = results.map(r => {
+            if (!r || !r.player || !r.player.name || r.number === undefined || r.number === null) {
+                console.error('Invalid result entry:', r);
+                return '';
+            }
+            const distance = Number(r.distance) || 0;
+            let pointChange = '';
+            if (winners.includes(r)) {
+                pointChange = '±0';
+            } else if (r.invalid) {
+                pointChange = '-1';
+            } else if (hasExactMatch) {
+                pointChange = '-2';
+            } else {
+                pointChange = '-1';
+            }
+
+            return `
+                <div class="player-result ${winners.includes(r) ? 'winner' : ''} ${r.invalid ? 'invalid' : ''} ${!r.player.isAlive ? 'eliminated' : ''}">
+                    ${winners.includes(r) ? '👑 ' : ''}${r.player.name}: ${r.number} 
+                    (distance: ${distance.toFixed(2)})
+                    ${r.invalid ? ' ❌ Invalid (duplicate number)' : ''}
+                    ${winners.includes(r) ? ' - Round Winner!' : ''}
+                    <span class="points-display">${pointChange}</span>
+                    ${!r.player.isAlive ? ' ☠️ ELIMINATED' : ''}
+                </div>
+            `;
+        }).filter(html => html).join('');
+
+        // Find or create game-info
+        let gameInfo = document.querySelector('.game-info');
+        if (!gameInfo) {
+            gameInfo = document.createElement('div');
+            gameInfo.className = 'game-info';
+            document.querySelector('.game-screen').appendChild(gameInfo);
+        }
 
         const resultsDiv = document.createElement('div');
         resultsDiv.className = 'round-results';
@@ -675,7 +799,7 @@ class DeathGame {
             <h3>Round ${this.currentRound} Results</h3>
             <div class="average-display">
                 <p>Team Average: ${average.toFixed(2)}</p>
-                <p>Target (0.8 × average): ${target.toFixed(2)}</p>
+                <p>Target (0.8 × average): ${target ? Number(target).toFixed(2) : 'N/A'}</p>
                 <p class="winner-info">Round ${winners.length > 1 ? 'Winners' : 'Winner'}: 
                     ${winners.map(w => `${w.player.name} (${w.number})`).join(', ')}</p>
                 ${hasExactMatch ? '<p class="penalty-notice">⚠️ Exact match found! Double penalty for losers</p>' : ''}
@@ -686,7 +810,7 @@ class DeathGame {
             <button class="history-btn" onclick="window.game.showHistory()">View Round History</button>
         `;
 
-        document.querySelector('.game-info').appendChild(resultsDiv);
+        gameInfo.appendChild(resultsDiv);
 
         // Play a small sound effect for human winners
         if (winners.some(w => !w.player.isBot)) {
@@ -696,9 +820,12 @@ class DeathGame {
 
     endRound() {
         // Clear the timer
-        clearInterval(this.timer);
+        if (this.timer) {
+            clearInterval(this.timer);
+            this.timer = null;
+        }
         
-        // If player hasn't selected a number, automatically select one
+        // If player hasn't selected a number and is not a bot, automatically select one
         if (typeof this.selectedNumber === 'undefined' && this.gameId && this.playerId) {
             // Generate random number between 0 and 100
             const randomNumber = Math.floor(Math.random() * 101);
@@ -717,7 +844,7 @@ class DeathGame {
             }
 
             // Submit the random number
-            fetch('/submit-number', {
+            fetch(`${this.serverUrl}/submit-number`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json'
@@ -729,9 +856,16 @@ class DeathGame {
                     isAutoSelected: true
                 })
             })
-            .then(response => response.json())
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                return response.json();
+            })
             .then(data => {
                 console.log('Auto-submission response:', data);
+                // Reset selected number after submission
+                this.selectedNumber = undefined;
             })
             .catch(error => {
                 console.error('Error in auto-submission:', error);
@@ -749,7 +883,7 @@ class DeathGame {
         this.playSound('buttonClick');
         const botName = `Bot ${index + 1}`;
         
-        fetch('/join', {
+        fetch(`${this.serverUrl}/join`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
@@ -760,7 +894,12 @@ class DeathGame {
                 isBot: true
             })
         })
-        .then(response => response.json())
+        .then(response => {
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            return response.json();
+        })
         .then(data => {
             console.log('Bot join response:', data);
             // Bot joining is handled through waiting room update
@@ -778,18 +917,74 @@ class DeathGame {
         const resultsDiv = document.createElement('div');
         resultsDiv.className = 'final-round-results';
         resultsDiv.innerHTML = `
-            <h2>🏆 Final Round Results 🏆</h2>
-            <div class="final-results-content">
-                <div class="round-results">
-                    ${document.querySelector('.round-results').innerHTML}
-                </div>
-                <div class="winner-announcement">
+            <div class="winner-announcement-container">
+                <div class="winner-content">
+                    <h2>🏆 Game Over 🏆</h2>
                     <h3>${winner.name} is the Winner!</h3>
-                    <p>Congratulations on surviving the Death Game!</p>
+                    <p class="congratulations-text">Congratulations on surviving the Death Game!</p>
                     <button id="return-lobby" class="return-btn">Return to Lobby</button>
                 </div>
             </div>
         `;
+
+        // Add CSS styles
+        const style = document.createElement('style');
+        style.textContent = `
+            .winner-announcement-container {
+                position: fixed;
+                top: 0;
+                left: 0;
+                right: 0;
+                bottom: 0;
+                display: flex;
+                justify-content: center;
+                align-items: center;
+                background: rgba(0, 0, 0, 0.8);
+                z-index: 1000;
+            }
+            .winner-content {
+                background: #2c3e50;
+                padding: 2rem;
+                border-radius: 15px;
+                text-align: center;
+                box-shadow: 0 0 20px rgba(0,0,0,0.5);
+                animation: fadeIn 0.5s ease-out;
+            }
+            .winner-content h2 {
+                color: #ffd700;
+                font-size: 2.5em;
+                margin-bottom: 1rem;
+            }
+            .winner-content h3 {
+                color: #fff;
+                font-size: 2em;
+                margin-bottom: 1rem;
+            }
+            .congratulations-text {
+                color: #ecf0f1;
+                font-size: 1.2em;
+                margin: 1rem 0;
+            }
+            .return-btn {
+                background: #e74c3c;
+                color: white;
+                border: none;
+                padding: 1rem 2rem;
+                font-size: 1.2em;
+                border-radius: 5px;
+                cursor: pointer;
+                margin-top: 1rem;
+                transition: background 0.3s ease;
+            }
+            .return-btn:hover {
+                background: #c0392b;
+            }
+            @keyframes fadeIn {
+                from { opacity: 0; transform: scale(0.9); }
+                to { opacity: 1; transform: scale(1); }
+            }
+        `;
+        document.head.appendChild(style);
 
         // Clear the game screen and show final results
         const gameInfo = document.querySelector('.game-info');
@@ -1012,7 +1207,7 @@ class DeathGame {
             index: player.spotIndex,
             points: 0,
             isAlive: true,
-            isBot: false
+            isBot: player.isBot
         }));
         
         // Find current player in the players array
@@ -1030,8 +1225,90 @@ class DeathGame {
     }
 
     handleRoundResult(data) {
-        const { results, target, hasExactMatch } = data;
-        this.showRoundResults(results, target, hasExactMatch);
+        console.log('Handling round result:', data);
+        const { results, target, average, hasExactMatch, alivePlayers: totalAlivePlayers } = data;
+        
+        if (!results || !Array.isArray(results) || results.length === 0) {
+            console.error('Invalid round results data:', data);
+            return;
+        }
+
+        // Clear any bot submission messages
+        const botSubmissionMessages = document.querySelectorAll('.bot-submission');
+        botSubmissionMessages.forEach(msg => msg.remove());
+
+        // Count alive players
+        const alivePlayers = this.players.filter(p => p.isAlive).length;
+        console.log('Alive players:', alivePlayers);
+
+        // Check for duplicate numbers (only when 4 or fewer players are alive)
+        const numbers = results.map(r => r.number);
+        const numberCounts = {};
+        if (alivePlayers <= 4) {
+            numbers.forEach(number => {
+                numberCounts[number] = (numberCounts[number] || 0) + 1;
+            });
+            console.log('Number counts:', numberCounts);
+        }
+
+        // Update local player state with server results
+        results.forEach(result => {
+            const player = this.players.find(p => p.id === result.playerId);
+            if (player) {
+                // Update points from server
+                player.points = result.points;
+                player.isAlive = result.isAlive !== false;
+
+                // Log point changes
+                if (result.isWinner) {
+                    console.log(`${player.name} won the round - keeping points at ${player.points}`);
+                } else if (result.invalid && alivePlayers <= 4) {
+                    console.log(`${player.name} lost a point (duplicate number) - points: ${player.points}`);
+                } else if (!result.isWinner) {
+                    console.log(`${player.name} lost points - updated to: ${player.points}`);
+                }
+            }
+        });
+
+        // Map server results to client format
+        const formattedResults = results.map(r => {
+            const player = this.players.find(p => p.id === r.playerId);
+            if (!player) {
+                console.error('Player not found:', r.playerId);
+                return null;
+            }
+            return {
+                player: {
+                    name: r.playerName || `Player ${r.playerId}`,
+                    isBot: player.isBot || false,
+                    points: r.points,
+                    isAlive: r.isAlive !== false
+                },
+                number: Number(r.number),
+                distance: Number(r.distance) || 0,
+                invalid: alivePlayers <= 4 ? r.invalid : false,
+                isWinner: r.isWinner || false
+            };
+        }).filter(r => r !== null);
+
+        // Update the players grid to show new points
+        this.updatePlayersGrid();
+
+        // Show round results
+        this.showRoundResults(formattedResults, target, hasExactMatch);
+        
+        // Check if game is over (only one player alive)
+        const remainingPlayers = this.players.filter(p => p.isAlive);
+        if (remainingPlayers.length === 1) {
+            this.showFinalResults(remainingPlayers[0]);
+            return;
+        }
+
+        // Start countdown for next round
+        this.showResultsCountdown(10, () => {
+            this.currentRound++;
+            this.startRound();
+        });
     }
 
     updateWaitingRoom(players) {
@@ -1094,7 +1371,7 @@ class DeathGame {
             return;
         }
 
-        fetch('/leave', {
+        fetch(`${this.serverUrl}/leave`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
@@ -1104,7 +1381,12 @@ class DeathGame {
                 spotIndex: this.currentPlayer
             })
         })
-        .then(response => response.json())
+        .then(response => {
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            return response.json();
+        })
         .then(data => {
             console.log('Leave game response:', data);
             this.removePlayerFromSpot(this.currentPlayer);

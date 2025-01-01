@@ -138,7 +138,13 @@ class GameServer {
             throw new Error('Player not found in game');
         }
 
-        // Don't allow duplicate submissions
+        // Check if player is dead
+        if (!player.isAlive) {
+            console.error('Dead player tried to submit:', { gameId, playerId });
+            return { success: false, message: 'Dead players cannot submit numbers' };
+        }
+
+        // Don't allow duplicate submissions from same player
         if (game.numbers[playerId] !== undefined) {
             console.log('Player already submitted a number:', { playerId, number: game.numbers[playerId] });
             return { success: false, message: 'Number already submitted' };
@@ -158,36 +164,38 @@ class GameServer {
         }
         game.numbers[playerId] = number;
 
-        // If this was a human player submitting, trigger bot submissions
+        // If this was a human player submitting, trigger bot submissions for alive bots only
         if (!player.isBot) {
-            // Trigger bot submissions with a small delay
+            const aliveBotPlayers = game.players.filter(p => 
+                p.isBot && p.isAlive && !game.numbers.hasOwnProperty(p.id)
+            );
+            
+            if (aliveBotPlayers.length > 0) {
+                console.log('Triggering immediate bot submissions for:', aliveBotPlayers.map(b => b.name));
+                this.submitBotNumbers(game);
+            }
+        }
+
+        // Check if all alive players have submitted
+        const alivePlayersSubmitted = game.players
+            .filter(p => p.isAlive)
+            .every(p => game.numbers.hasOwnProperty(p.id));
+        
+        if (alivePlayersSubmitted) {
+            console.log('All alive players have submitted. Calculating results...');
+            // Calculate results after a short delay
             setTimeout(() => {
-                const botPlayers = game.players.filter(p => 
-                    p.isBot && !game.numbers.hasOwnProperty(p.id)
-                );
-                
-                if (botPlayers.length > 0) {
-                    console.log('Triggering submissions for bots:', botPlayers.map(b => b.name));
-                    this.submitBotNumbers(game);
-                }
-            }, 500);
+                this.calculateRoundResults(gameId);
+            }, 1000);
+        } else {
+            console.log('Waiting for more submissions:', {
+                submitted: Object.keys(game.numbers).length,
+                total: game.players.filter(p => p.isAlive).length,
+                missing: game.players.filter(p => p.isAlive && !game.numbers.hasOwnProperty(p.id)).map(p => p.name)
+            });
         }
 
-        // Check if all players submitted
-        const allPlayersSubmitted = game.players.every(player => 
-            game.numbers.hasOwnProperty(player.id)
-        );
-
-        if (allPlayersSubmitted) {
-            // Add a small delay before calculating results
-            setTimeout(() => this.calculateRoundResults(gameId), 500);
-        }
-
-        return { 
-            success: true, 
-            message: 'Number submitted successfully',
-            allSubmitted: allPlayersSubmitted
-        };
+        return { success: true, message: 'Number submitted successfully' };
     }
 
     submitBotNumbers(game) {
@@ -196,33 +204,41 @@ class GameServer {
             p.isBot && !game.numbers.hasOwnProperty(p.id)
         );
 
-        if (botsToSubmit.length === 0) return;
+        if (botsToSubmit.length === 0) {
+            console.log('No bots need to submit numbers');
+            return;
+        }
 
-        console.log('Submitting numbers for bots:', botsToSubmit.map(b => b.name));
+        console.log('Processing bot submissions for:', botsToSubmit.map(b => b.name));
 
-        // Submit numbers for each bot with a small delay between each
-        botsToSubmit.forEach((bot, index) => {
-            setTimeout(() => {
-                if (!game.numbers[bot.id]) {  // Double check bot hasn't submitted
-                    const botNumber = this.calculateBotNumber(game, bot);
-                    game.numbers[bot.id] = botNumber;
-                    console.log(`Bot ${bot.name} submitted number:`, botNumber);
+        // Submit numbers for each bot immediately
+        botsToSubmit.forEach(bot => {
+            const botNumber = this.calculateBotNumber(game, bot);
+            game.numbers[bot.id] = botNumber;
+            console.log(`Bot ${bot.name} submitted number:`, botNumber);
 
-                    // Broadcast the bot's submission
-                    pusher.trigger('game-channel', 'bot-submit', {
-                        gameId: game.id,
-                        botName: bot.name,
-                        number: botNumber
-                    });
-
-                    // Check if this was the last submission
-                    const allSubmitted = game.players.every(p => game.numbers.hasOwnProperty(p.id));
-                    if (allSubmitted) {
-                        this.calculateRoundResults(game.id);
-                    }
-                }
-            }, index * 1000); // 1 second delay between each bot
+            // Notify clients about bot submission
+            pusher.trigger('game-channel', 'bot-submit', {
+                gameId: game.id,
+                botName: bot.name,
+                number: botNumber
+            });
         });
+
+        // Check if all players have submitted after bot submissions
+        const allSubmitted = game.players.every(p => game.numbers.hasOwnProperty(p.id));
+        if (allSubmitted) {
+            console.log('All players (including bots) have submitted. Calculating results...');
+            setTimeout(() => {
+                this.calculateRoundResults(game.id);
+            }, 1000);
+        } else {
+            console.log('Still waiting for submissions after bot moves:', {
+                submitted: Object.keys(game.numbers).length,
+                total: game.players.length,
+                missing: game.players.filter(p => !game.numbers.hasOwnProperty(p.id)).map(p => p.name)
+            });
+        }
     }
 
     calculateBotNumber(game, bot) {
@@ -271,25 +287,169 @@ class GameServer {
 
     calculateRoundResults(gameId) {
         const game = this.games.get(gameId);
-        if (!game) return;
+        if (!game) {
+            console.error('Game not found for results calculation:', gameId);
+            return;
+        }
 
-        const numbers = Object.values(game.numbers);
-        const average = numbers.reduce((a, b) => a + b, 0) / numbers.length;
+        // Only get alive players' submissions
+        const alivePlayersSubmitted = game.players
+            .filter(p => p.isAlive)
+            .every(p => game.numbers.hasOwnProperty(p.id));
+
+        if (!alivePlayersSubmitted) {
+            console.error('Not all alive players have submitted numbers');
+            return;
+        }
+
+        console.log('Calculating round results for game:', gameId);
+        console.log('Submitted numbers:', game.numbers);
+
+        // Calculate average and target only from alive players' numbers
+        const alivePlayerNumbers = game.players
+            .filter(p => p.isAlive)
+            .map(p => Number(game.numbers[p.id]));
+
+        const average = alivePlayerNumbers.reduce((a, b) => a + b, 0) / alivePlayerNumbers.length;
         const target = average * 0.8;
 
-        // Calculate distances and prepare results
-        const results = game.players.map(player => ({
-            playerId: player.id,
-            playerName: player.name,
-            number: game.numbers[player.id],
-            distance: Math.abs(game.numbers[player.id] - target)
-        }));
+        console.log('Numbers:', alivePlayerNumbers);
+        console.log('Average:', average);
+        console.log('Target:', target);
 
-        // Sort by distance
-        results.sort((a, b) => a.distance - b.distance);
+        // Count alive players
+        const alivePlayers = game.players.filter(p => p.isAlive).length;
+        console.log('Alive players:', alivePlayers);
 
-        // Check for exact match
-        const hasExactMatch = results.some(r => r.distance === 0);
+        // Check for duplicate numbers (only when 4 or fewer players are alive)
+        const numberCounts = {};
+        let hasDuplicates = false;
+        if (alivePlayers <= 4) {
+            alivePlayerNumbers.forEach(number => {
+                numberCounts[number] = (numberCounts[number] || 0) + 1;
+            });
+            hasDuplicates = Object.values(numberCounts).some(count => count > 1);
+            console.log('Number counts:', numberCounts);
+            console.log('Has duplicates:', hasDuplicates);
+        }
+
+        // Calculate distances and prepare results only for alive players
+        const results = game.players
+            .filter(p => p.isAlive)
+            .map(player => {
+                const number = game.numbers[player.id];
+                // Only mark as invalid if we have 4 or fewer players AND the number is a duplicate
+                const isDuplicate = alivePlayers <= 4 && numberCounts[number] > 1;
+                const distance = Math.abs(number - target);
+
+                return {
+                    playerId: player.id,
+                    playerName: player.name,
+                    number: number,
+                    distance: distance,
+                    isBot: player.isBot,
+                    invalid: isDuplicate,
+                    isWinner: false,
+                    points: player.points,
+                    isAlive: player.isAlive
+                };
+            });
+
+        // Special rule for 2 players: 0 and 100
+        if (alivePlayers === 2) {
+            const hasZero = alivePlayerNumbers.includes(0);
+            const has100 = alivePlayerNumbers.includes(100);
+            if (hasZero && has100) {
+                results.forEach(r => {
+                    if (r.number === 100) {
+                        r.isWinner = true;
+                        console.log(`${r.playerName} wins with special rule (100)`);
+                    }
+                });
+            }
+        }
+
+        // If no winner set by special rules, determine winner by closest to target
+        if (!results.some(r => r.isWinner)) {
+            // Get valid results (non-duplicate numbers if 4 or fewer players)
+            const validResults = alivePlayers <= 4 ? results.filter(r => !r.invalid) : results;
+            if (validResults.length > 0) {
+                const minDistance = Math.min(...validResults.map(r => r.distance));
+                
+                // Mark ALL players with minimum distance as winners in the main results array
+                results.forEach(result => {
+                    if (!result.invalid && Math.abs(result.distance - minDistance) < 0.0001) {
+                        result.isWinner = true;
+                        console.log(`${result.playerName} wins with number ${result.number} (distance: ${result.distance.toFixed(2)})`);
+                    }
+                });
+            }
+        }
+
+        // Check for exact match when 3 players remain
+        const hasExactMatch = alivePlayers === 3 && results.some(r => Math.abs(r.distance) < 0.0001);
+
+        // Log all winners for debugging
+        const winners = results.filter(r => r.isWinner);
+        console.log('Winners this round:', winners.map(w => ({
+            name: w.playerName,
+            number: w.number,
+            distance: w.distance,
+            points: w.points
+        })));
+
+        // Update points - ONLY for non-winners
+        results.forEach(result => {
+            const player = game.players.find(p => p.id === result.playerId);
+            if (!player) return;
+
+            const oldPoints = player.points;
+            
+            // Skip point deduction for winners
+            if (result.isWinner) {
+                console.log(`${player.name} is a winner - keeping points at ${oldPoints}`);
+                result.points = oldPoints; // Ensure winner's points stay the same
+            } else {
+                // Calculate point loss for non-winners only
+                let pointLoss = 1; // Default point loss
+
+                if (result.invalid && alivePlayers <= 4) {
+                    pointLoss = 1;
+                    console.log(`${player.name} loses ${pointLoss} point (duplicate number)`);
+                } else if (hasExactMatch && alivePlayers === 3) {
+                    pointLoss = 2;
+                    console.log(`${player.name} loses ${pointLoss} points (exact match penalty)`);
+                } else {
+                    pointLoss = 1;
+                    console.log(`${player.name} loses ${pointLoss} point (standard loss)`);
+                }
+
+                player.points -= pointLoss;
+                result.points = player.points;
+                console.log(`${player.name} points updated from ${oldPoints} to ${player.points}`);
+            }
+
+            // Check for elimination
+            if (player.points <= -10) {
+                player.isAlive = false;
+                result.isAlive = false;
+                console.log(`${player.name} has been eliminated!`);
+            }
+        });
+
+        console.log('Round results calculated:', {
+            average,
+            target,
+            results: results.map(r => ({
+                player: r.playerName,
+                number: r.number,
+                distance: r.distance,
+                invalid: r.invalid,
+                isWinner: r.isWinner,
+                points: r.points,
+                isAlive: game.players.find(p => p.id === r.playerId)?.isAlive
+            }))
+        });
 
         // Send results to all players
         pusher.trigger('game-channel', 'round-result', {
@@ -297,7 +457,8 @@ class GameServer {
             results: results,
             average: average,
             target: target,
-            hasExactMatch: hasExactMatch
+            hasExactMatch: hasExactMatch,
+            alivePlayers: alivePlayers
         });
 
         // Reset numbers for next round
