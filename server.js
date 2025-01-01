@@ -14,15 +14,25 @@ const app = express();
 
 // CORS configuration
 const corsOptions = {
-    origin: [
-        'http://localhost:3000',
-        'https://borderland-sigma.vercel.app',
-        'https://borderland-game.vercel.app'
-    ],
+    origin: function(origin, callback) {
+        const allowedOrigins = [
+            'http://localhost:3000',
+            'https://borderland-sigma.vercel.app',
+            'https://borderland-game.vercel.app'
+        ];
+        // Allow requests with no origin (like mobile apps or curl requests)
+        if (!origin) return callback(null, true);
+        if (allowedOrigins.indexOf(origin) === -1) {
+            return callback(new Error('CORS policy violation'), false);
+        }
+        return callback(null, true);
+    },
     methods: ['GET', 'POST', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'Accept'],
+    exposedHeaders: ['Content-Length', 'Content-Type'],
     credentials: true,
-    optionsSuccessStatus: 200
+    optionsSuccessStatus: 200,
+    maxAge: 3600
 };
 
 // Apply CORS middleware
