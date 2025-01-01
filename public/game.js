@@ -427,6 +427,239 @@ class DeathGame {
         this.gameStarted = false;
         this.currentPlayer = null;
     }
+
+    setupAudio() {
+        this.sounds = {
+            bgMusic: document.getElementById('bgMusic'),
+            buttonClick: document.getElementById('buttonClick'),
+            submit: document.getElementById('submitSound'),
+            winner: document.getElementById('winnerSound'),
+            elimination: document.getElementById('eliminationSound')
+        };
+
+        // Set volumes
+        this.sounds.bgMusic.volume = 0.3;
+        this.sounds.buttonClick.volume = 0.5;
+        this.sounds.submit.volume = 0.6;
+        this.sounds.winner.volume = 0.7;
+        this.sounds.elimination.volume = 0.6;
+
+        // Preload audio files
+        Object.values(this.sounds).forEach(sound => {
+            sound.load();
+        });
+
+        // Add error handling for audio loading
+        this.sounds.bgMusic.addEventListener('error', () => {
+            console.error('Error loading background music');
+        });
+    }
+
+    playSound(soundId) {
+        const sound = this.sounds[soundId];
+        if (sound) {
+            sound.currentTime = 0;
+            const playPromise = sound.play();
+            
+            if (playPromise !== undefined) {
+                playPromise.catch(error => {
+                    console.error(`Error playing ${soundId}:`, error);
+                });
+            }
+        }
+    }
+
+    showNameModal(spotIndex) {
+        // Don't allow changing spots after game starts
+        if (this.gameStarted) {
+            return;
+        }
+
+        // Check if spot is already taken
+        if (this.players.some(p => p.index === spotIndex)) {
+            alert('This spot is already taken!');
+            return;
+        }
+
+        // If user already has a spot, they can only change their own spot
+        if (this.currentPlayer !== null) {
+            // Only allow changing their own spot
+            const currentPlayerData = this.players.find(p => p.index === this.currentPlayer);
+            if (currentPlayerData) {
+                // First, leave the current spot
+                fetch(`${this.serverUrl}/leave`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        roomId: this.roomId,
+                        playerId: this.playerId,
+                        spotIndex: this.currentPlayer
+                    })
+                })
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error(`HTTP error! status: ${response.status}`);
+                    }
+                    return response.json();
+                })
+                .then(() => {
+                    // Then, join the new spot with the same name
+                    return fetch(`${this.serverUrl}/join`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({
+                            roomId: this.roomId,
+                            playerName: currentPlayerData.name,
+                            spotIndex: spotIndex
+                        })
+                    });
+                })
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error(`HTTP error! status: ${response.status}`);
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    console.log('Spot change response:', data);
+                    this.playerId = data.playerId;
+                    if (data.gameId) {
+                        this.gameId = data.gameId;
+                    }
+                    // Remove player from old spot and add to new spot
+                    this.removePlayerFromSpot(this.currentPlayer);
+                    this.addPlayer(spotIndex, currentPlayerData.name);
+                    this.playSound('buttonClick');
+                })
+                .catch(error => {
+                    console.error('Error changing spot:', error);
+                    alert('Failed to change spot. Please try again.');
+                });
+            }
+            return;
+        }
+        
+        // For new players who don't have a spot yet
+        this.selectedSpot = spotIndex;
+        const modal = document.getElementById('name-modal');
+        const input = document.getElementById('player-name-input');
+        input.value = '';
+        modal.classList.add('active');
+        input.focus();
+    }
+
+    hideNameModal() {
+        const modal = document.getElementById('name-modal');
+        modal.classList.remove('active');
+        this.selectedSpot = null;
+    }
+
+    addPlayer(index, name) {
+        // Remove player from any existing spot
+        if (this.currentPlayer !== null) {
+            this.players = this.players.filter(p => p.index !== this.currentPlayer);
+        }
+
+        // Add player to new spot
+        this.players.push({
+            index,
+            name,
+            points: 0,
+            isAlive: true,
+            isBot: false
+        });
+
+        // Set current player
+        this.currentPlayer = index;
+
+        try {
+            // Update UI for all spots
+            const joinBtns = document.querySelectorAll('.join-btn');
+            const botBtns = document.querySelectorAll('.bot-btn');
+
+            // Reset all spots first
+            joinBtns.forEach((btn, i) => {
+                if (!this.players.some(p => p.index === i)) {
+                    btn.innerHTML = `Join Spot ${i + 1}`;
+                    btn.classList.remove('occupied', 'other-player');
+                    if (botBtns[i]) {
+                        botBtns[i].style.display = 'block';
+                    }
+                }
+            });
+
+            // Update the selected spot
+            if (joinBtns[index]) {
+                const joinBtn = joinBtns[index];
+                joinBtn.innerHTML = `
+                    <span class="status-icon">👤</span>
+                    <span class="player-name">${name}</span>
+                    <span class="spot-number">#${index + 1}</span>
+                    <button class="leave-btn" onclick="window.game.leaveGame()">Leave</button>
+                `;
+                joinBtn.classList.add('occupied');
+
+                // Hide bot button for occupied spot
+                if (botBtns[index]) {
+                    botBtns[index].style.display = 'none';
+                }
+            }
+            
+            // Update player count and start button
+            const playersReadyElement = document.getElementById('players-ready');
+            const startGameButton = document.getElementById('start-game');
+            
+            if (playersReadyElement) {
+                playersReadyElement.textContent = this.players.length;
+            }
+            
+            if (startGameButton) {
+                startGameButton.disabled = this.players.length !== this.maxPlayers;
+            }
+        } catch (error) {
+            console.error('Error updating UI in addPlayer:', error);
+            // Remove the player if UI update fails
+            this.players = this.players.filter(p => p.index !== index);
+            this.currentPlayer = null;
+            throw error;
+        }
+    }
+
+    removePlayerFromSpot(index) {
+        // Remove player from players array
+        this.players = this.players.filter(p => p.index !== index);
+        
+        // Reset the join button
+        const joinBtn = document.querySelectorAll('.join-btn')[index];
+        if (joinBtn) {
+            joinBtn.innerHTML = `Join Spot ${index + 1}`;
+            joinBtn.classList.remove('occupied');
+        }
+        
+        // Show the bot button again
+        const botBtn = document.querySelectorAll('.bot-btn')[index];
+        if (botBtn) {
+            botBtn.style.display = 'block';
+        }
+        
+        // Update player count and start button
+        const playersReadyElement = document.getElementById('players-ready');
+        const startGameButton = document.getElementById('start-game');
+        
+        if (playersReadyElement) {
+            playersReadyElement.textContent = this.players.length;
+        }
+        
+        if (startGameButton) {
+            startGameButton.disabled = this.players.length !== this.maxPlayers;
+        }
+        
+        this.currentPlayer = null;
+    }
 }
 
 // Initialize game when page loads

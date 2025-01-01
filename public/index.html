@@ -135,7 +135,8 @@
             </div>
         </div>
 
-        <div id="login-screen" class="screen active">
+        <!-- Login Screen -->
+        <div id="login-screen" class="screen">
             <div class="game-header">
                 <svg class="balance-logo" viewBox="0 0 100 100" width="60" height="60">
                     <path class="scale-base" d="M48 80 L52 80 L50 60 L48 80" fill="#ff4444"/>
@@ -146,69 +147,57 @@
                 </svg>
                 <h1>Balance Scale</h1>
             </div>
-            <div class="audio-controls">
-                <label for="volume">Volume:</label>
-                <input type="range" id="volume" min="0" max="100" value="50">
-                <button id="toggleMusic" class="audio-btn">🔊</button>
-            </div>
-            <div class="player-slots">
-                <div class="player-slot">
-                    <div class="input-group">
-                        <button class="join-btn">Join Spot 1</button>
-                    </div>
+            <div class="player-spots">
+                <div class="spot-container">
+                    <button class="join-btn">Join Spot 1</button>
                     <button class="bot-btn">Add Bot</button>
                 </div>
-                <div class="player-slot">
-                    <div class="input-group">
-                        <button class="join-btn">Join Spot 2</button>
-                    </div>
+                <div class="spot-container">
+                    <button class="join-btn">Join Spot 2</button>
                     <button class="bot-btn">Add Bot</button>
                 </div>
-                <div class="player-slot">
-                    <div class="input-group">
-                        <button class="join-btn">Join Spot 3</button>
-                    </div>
+                <div class="spot-container">
+                    <button class="join-btn">Join Spot 3</button>
                     <button class="bot-btn">Add Bot</button>
                 </div>
-                <div class="player-slot">
-                    <div class="input-group">
-                        <button class="join-btn">Join Spot 4</button>
-                    </div>
+                <div class="spot-container">
+                    <button class="join-btn">Join Spot 4</button>
                     <button class="bot-btn">Add Bot</button>
                 </div>
-                <div class="player-slot">
-                    <div class="input-group">
-                        <button class="join-btn">Join Spot 5</button>
-                    </div>
+                <div class="spot-container">
+                    <button class="join-btn">Join Spot 5</button>
                     <button class="bot-btn">Add Bot</button>
                 </div>
             </div>
-            <div class="game-status">
-                <p>Waiting for players... (<span id="players-ready">0</span>/5)</p>
+            <div class="game-controls">
+                <div class="players-count">
+                    Players Ready: <span id="players-ready">0</span>/5
+                </div>
+                <button id="start-game" disabled>Start Game</button>
             </div>
-            <button id="start-game" disabled>Start Game</button>
         </div>
 
+        <!-- Name Input Modal -->
+        <div id="name-modal" class="modal">
+            <div class="modal-content">
+                <h3>Enter Your Name</h3>
+                <input type="text" id="player-name-input" maxlength="20" placeholder="Your name">
+                <div class="modal-buttons">
+                    <button id="confirm-name">Join</button>
+                    <button id="cancel-join">Cancel</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Game Screen -->
         <div id="game-screen" class="screen">
             <div class="game-info">
                 <h2>Round <span id="round-number">1</span></h2>
-                <div id="timer">Time remaining: <span id="time">60</span>s</div>
+                <div id="timer">Time remaining: <span id="time">30</span>s</div>
                 <div id="current-rules"></div>
             </div>
             <div class="players-grid"></div>
-            <div class="number-input">
-                <!-- Number table will be created here by JavaScript -->
-            </div>
-        </div>
-    </div>
-    <div id="name-modal" class="name-modal">
-        <div class="name-modal-content">
-            <h3>Enter Your Name</h3>
-            <input type="text" id="player-name-input" placeholder="Your name">
-            <div class="modal-buttons">
-                <button id="confirm-name">Join</button>
-                <button id="cancel-join">Cancel</button>
-            </div>
+            <div class="number-input"></div>
         </div>
     </div>
     <script>
