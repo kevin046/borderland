@@ -1,5 +1,10 @@
 class DeathGame {
     constructor() {
+        this.pusher = new Pusher('e6a64e50330db39ab319', {
+            cluster: 'us2'
+        });
+        this.gameChannel = this.pusher.subscribe('game-channel');
+        this.setupPusher();
         this.players = [];
         this.maxPlayers = 5;
         this.currentRound = 1;
@@ -156,7 +161,20 @@ class DeathGame {
         const name = nameInput.value.trim();
         
         if (name && this.selectedSpot !== null) {
-            this.addPlayer(this.selectedSpot, name);
+            fetch('/join', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    playerName: name,
+                    spotIndex: this.selectedSpot
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                this.playerId = data.playerId;
+            });
             this.hideNameModal();
         }
     }
@@ -354,32 +372,24 @@ class DeathGame {
             return;
         }
 
-        // Find the current human player
-        const humanPlayer = this.players.find(p => !p.isBot && p.isAlive);
-        if (humanPlayer) {
-            this.playerNumbers[humanPlayer.index] = this.selectedNumber;
-            // Replace the entire number input area with waiting message
-            const numberInput = document.querySelector('.number-input');
-            if (numberInput) {
-                numberInput.innerHTML = `
-                    <div class="waiting-message">
-                        Waiting for other players...
-                    </div>
-                `;
-            }
-        }
-
-        // Generate bot numbers
-        const alivePlayers = this.players.filter(p => p.isAlive).length;
-        this.players.forEach(player => {
-            if (player.isBot && player.isAlive && !this.playerNumbers[player.index]) {
-                this.playerNumbers[player.index] = this.calculateBotNumber(alivePlayers);
-            }
+        fetch('/submit-number', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                gameId: this.gameId,
+                playerId: this.playerId,
+                number: this.selectedNumber
+            })
         });
 
-        // Since bots submit immediately after human player, we can calculate results right away
-        clearInterval(this.timer);
-        this.calculateRoundResults();
+        // Show waiting message
+        document.querySelector('.number-input').innerHTML = `
+            <div class="waiting-message">
+                Waiting for other players...
+            </div>
+        `;
     }
 
     calculateBotNumber(alivePlayers) {
@@ -857,6 +867,32 @@ class DeathGame {
         document.getElementById('start-game').disabled = this.players.length !== this.maxPlayers;
         
         this.currentPlayer = null;
+    }
+
+    setupPusher() {
+        this.gameChannel.bind('waiting-room-update', data => {
+            this.updateWaitingRoom(data.players);
+        });
+
+        this.gameChannel.bind('game-start', data => {
+            this.handleGameStart(data);
+        });
+
+        this.gameChannel.bind('round-result', data => {
+            this.handleRoundResult(data);
+        });
+    }
+
+    updateWaitingRoom(players) {
+        // Update UI to show waiting players
+        const slots = document.querySelectorAll('.player-slot');
+        slots.forEach((slot, index) => {
+            if (players[index]) {
+                // Show player in slot
+                slot.querySelector('.join-btn').textContent = players[index].name;
+                slot.querySelector('.join-btn').classList.add('occupied');
+            }
+        });
     }
 }
 
