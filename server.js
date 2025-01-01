@@ -17,7 +17,6 @@ const corsOptions = {
     origin: [
         'http://localhost:3000',
         'https://borderland-sigma.vercel.app',
-        'https://borderland-sigma.vercel.app/',
         'https://borderland-game.vercel.app'
     ],
     methods: ['GET', 'POST', 'OPTIONS'],
@@ -28,27 +27,6 @@ const corsOptions = {
 
 // Apply CORS middleware
 app.use(cors(corsOptions));
-
-// Add CORS headers to all responses
-app.use((req, res, next) => {
-    const allowedOrigins = [
-        'http://localhost:3000',
-        'https://borderland-sigma.vercel.app',
-        'https://borderland-sigma.vercel.app/',
-        'https://borderland-game.vercel.app'
-    ];
-    const origin = req.headers.origin;
-    if (allowedOrigins.includes(origin)) {
-        res.header('Access-Control-Allow-Origin', origin);
-    }
-    res.header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
-    res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization');
-    res.header('Access-Control-Allow-Credentials', true);
-    if (req.method === 'OPTIONS') {
-        return res.sendStatus(200);
-    }
-    next();
-});
 
 // Serve static files
 app.use(express.static(path.join(__dirname, 'public')));

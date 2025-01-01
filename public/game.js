@@ -595,13 +595,13 @@ class DeathGame {
             // Update the selected spot
             if (joinBtns[index]) {
                 const joinBtn = joinBtns[index];
-                joinBtn.innerHTML = `
-                    <span class="status-icon">👤</span>
-                    <span class="player-name">${name}</span>
-                    <span class="spot-number">#${index + 1}</span>
+        joinBtn.innerHTML = `
+            <span class="status-icon">👤</span>
+            <span class="player-name">${name}</span>
+            <span class="spot-number">#${index + 1}</span>
                     <button class="leave-btn" onclick="window.game.leaveGame()">Leave</button>
-                `;
-                joinBtn.classList.add('occupied');
+        `;
+        joinBtn.classList.add('occupied');
 
                 // Hide bot button for occupied spot
                 if (botBtns[index]) {
@@ -624,7 +624,7 @@ class DeathGame {
             console.error('Error updating UI in addPlayer:', error);
             // Remove the player if UI update fails
             this.players = this.players.filter(p => p.index !== index);
-            this.currentPlayer = null;
+        this.currentPlayer = null;
             throw error;
         }
     }
@@ -636,14 +636,14 @@ class DeathGame {
         // Reset the join button
         const joinBtn = document.querySelectorAll('.join-btn')[index];
         if (joinBtn) {
-            joinBtn.innerHTML = `Join Spot ${index + 1}`;
-            joinBtn.classList.remove('occupied');
+        joinBtn.innerHTML = `Join Spot ${index + 1}`;
+        joinBtn.classList.remove('occupied');
         }
         
         // Show the bot button again
         const botBtn = document.querySelectorAll('.bot-btn')[index];
         if (botBtn) {
-            botBtn.style.display = 'block';
+        botBtn.style.display = 'block';
         }
         
         // Update player count and start button
