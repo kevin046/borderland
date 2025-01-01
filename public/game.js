@@ -16,7 +16,12 @@ class DeathGame {
         this.selectedSpot = null;
         this.currentPlayer = null; // Store current player's spot
         this.gameStarted = false; // Add flag to track if game has started
-        this.serverUrl = 'http://localhost:3000'; // Add server URL
+        
+        // Set server URL based on environment
+        this.serverUrl = window.location.hostname === 'localhost' 
+            ? 'http://localhost:3000' 
+            : 'https://borderland-sigma.vercel.app';
+            
         this.setupAudio();
         this.initializeEventListeners();
     }
@@ -1267,31 +1272,37 @@ class DeathGame {
                 } else if (!result.isWinner) {
                     console.log(`${player.name} lost points - updated to: ${player.points}`);
                 }
+
+                // Check if player was eliminated this round
+                if (!player.isAlive) {
+                    this.playSound('elimination');
+                }
             }
         });
 
-        // Map server results to client format
-        const formattedResults = results.map(r => {
-            const player = this.players.find(p => p.id === r.playerId);
-            if (!player) {
-                console.error('Player not found:', r.playerId);
-                return null;
-            }
-            return {
-                player: {
-                    name: r.playerName || `Player ${r.playerId}`,
-                    isBot: player.isBot || false,
-                    points: r.points,
-                    isAlive: r.isAlive !== false
-                },
-                number: Number(r.number),
-                distance: Number(r.distance) || 0,
-                invalid: alivePlayers <= 4 ? r.invalid : false,
-                isWinner: r.isWinner || false
-            };
-        }).filter(r => r !== null);
+        // Map server results to client format (only for alive players)
+        const formattedResults = results
+            .filter(r => {
+                const player = this.players.find(p => p.id === r.playerId);
+                return player && player.isAlive;
+            })
+            .map(r => {
+                const player = this.players.find(p => p.id === r.playerId);
+                return {
+                    player: {
+                        name: r.playerName || `Player ${r.playerId}`,
+                        isBot: player.isBot || false,
+                        points: r.points,
+                        isAlive: true // We know they're alive because of the filter
+                    },
+                    number: Number(r.number),
+                    distance: Number(r.distance) || 0,
+                    invalid: alivePlayers <= 4 ? r.invalid : false,
+                    isWinner: r.isWinner || false
+                };
+            });
 
-        // Update the players grid to show new points
+        // Update the players grid to show new points and eliminated players
         this.updatePlayersGrid();
 
         // Show round results

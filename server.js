@@ -1,6 +1,7 @@
 const express = require('express');
 const path = require('path');
 const Pusher = require('pusher');
+const cors = require('cors');
 
 const pusher = new Pusher({
     appId: "1919360",
@@ -10,6 +11,30 @@ const pusher = new Pusher({
 });
 
 const app = express();
+
+// CORS configuration
+const corsOptions = {
+    origin: ['http://localhost:3000', 'https://borderland-sigma.vercel.app', 'https://borderland-sigma.vercel.app/'],
+    methods: ['GET', 'POST', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization'],
+    credentials: true,
+    optionsSuccessStatus: 200
+};
+
+// Apply CORS middleware
+app.use(cors(corsOptions));
+
+// Add CORS headers to all responses
+app.use((req, res, next) => {
+    res.header('Access-Control-Allow-Origin', req.headers.origin);
+    res.header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+    res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+    res.header('Access-Control-Allow-Credentials', true);
+    if (req.method === 'OPTIONS') {
+        return res.sendStatus(200);
+    }
+    next();
+});
 
 // Serve static files
 app.use(express.static(path.join(__dirname, 'public')));
