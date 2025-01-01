@@ -76,7 +76,6 @@ class DeathGame {
             headers: {
                 'Content-Type': 'application/json'
             },
-            credentials: 'include',
             mode: 'cors',
             body: JSON.stringify({ roomId })
         })
@@ -113,7 +112,6 @@ class DeathGame {
             headers: {
                 'Content-Type': 'application/json'
             },
-            credentials: 'include',
             mode: 'cors',
             body: JSON.stringify({ roomId })
         })
@@ -193,7 +191,6 @@ class DeathGame {
                 headers: {
                     'Content-Type': 'application/json'
                 },
-                credentials: 'include',
                 mode: 'cors',
                 body: JSON.stringify({
                     roomId: this.roomId,
@@ -242,7 +239,6 @@ class DeathGame {
             headers: {
                 'Content-Type': 'application/json'
             },
-            credentials: 'include',
             mode: 'cors',
             body: JSON.stringify({
                 roomId: this.roomId,
@@ -288,7 +284,6 @@ class DeathGame {
             headers: {
                 'Content-Type': 'application/json'
             },
-            credentials: 'include',
             mode: 'cors',
             body: JSON.stringify({
                 roomId: this.roomId,
@@ -341,7 +336,6 @@ class DeathGame {
             headers: {
                 'Content-Type': 'application/json'
             },
-            credentials: 'include',
             mode: 'cors',
             body: JSON.stringify({
                 roomId: this.roomId,

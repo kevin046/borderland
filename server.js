@@ -12,19 +12,13 @@ const pusher = new Pusher({
 
 const app = express();
 
-// Simple CORS middleware
-app.use((req, res, next) => {
-    res.header('Access-Control-Allow-Origin', 'https://borderland-sigma.vercel.app');
-    res.header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
-    res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, Accept');
-    res.header('Access-Control-Allow-Credentials', 'true');
-    
-    // Handle preflight requests
-    if (req.method === 'OPTIONS') {
-        return res.status(200).end();
-    }
-    next();
-});
+// Enable CORS for all routes
+app.use(cors({
+    origin: 'https://borderland-sigma.vercel.app',
+    methods: ['GET', 'POST', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization'],
+    credentials: false // Set to false since we're not using cookies
+}));
 
 // Parse JSON bodies
 app.use(express.json());
