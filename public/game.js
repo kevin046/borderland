@@ -31,27 +31,35 @@ class DeathGame {
     async fetchWithCORS(url, options = {}) {
         const defaultOptions = {
             mode: 'cors',
-            credentials: 'include',
             headers: {
                 'Content-Type': 'application/json',
-                'Access-Control-Allow-Origin': '*'
+                'Accept': 'application/json'
             }
         };
 
+        // Don't spread headers, set them explicitly
         const mergedOptions = {
             ...defaultOptions,
             ...options,
             headers: {
-                ...defaultOptions.headers,
-                ...(options.headers || {})
+                'Content-Type': 'application/json',
+                'Accept': 'application/json'
             }
         };
 
         try {
+            console.log('Sending request to:', url, 'with options:', mergedOptions);
             const response = await fetch(url, mergedOptions);
+            
+            // Log the response headers for debugging
+            console.log('Response headers:', [...response.headers.entries()]);
+            
             if (!response.ok) {
-                throw new Error(`HTTP error! status: ${response.status}`);
+                const errorText = await response.text();
+                console.error('Server error response:', errorText);
+                throw new Error(`HTTP error! status: ${response.status}, body: ${errorText}`);
             }
+            
             return response;
         } catch (error) {
             console.error('Fetch error:', error);
