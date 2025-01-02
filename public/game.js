@@ -182,6 +182,9 @@ class DeathGame {
             return;
         }
 
+        // Clear existing game state
+        this.clearGameState();
+
         this.fetchWithCORS(`${this.serverUrl}/join-room`, {
             method: 'POST',
             body: JSON.stringify({ roomId })
@@ -198,6 +201,69 @@ class DeathGame {
             console.error('Error joining room:', error);
             alert('Failed to join room. Room might not exist.');
         });
+    }
+
+    clearGameState() {
+        // Clear game state variables
+        this.roomId = null;
+        this.gameId = null;
+        this.playerId = null;
+        this.playerName = null;
+        this.gameStarted = false;
+        this.players = [];
+        this.selectedNumber = undefined;
+        this.currentRound = 1;
+        this.selectedSpot = null;
+        this.currentPlayer = null;
+        
+        // Clear localStorage
+        localStorage.removeItem('gameState');
+
+        // Unsubscribe from current channel
+        if (this.gameChannel) {
+            this.pusher.unsubscribe(this.gameChannel.name);
+            this.gameChannel = null;
+        }
+
+        // Reset UI elements
+        document.querySelectorAll('.screen').forEach(screen => {
+            screen.style.display = 'none';
+        });
+
+        // Clear game board
+        const gameBoard = document.querySelector('.game-board');
+        if (gameBoard) {
+            gameBoard.innerHTML = '';
+        }
+
+        // Clear results section
+        const numbersList = document.querySelector('.numbers-list');
+        if (numbersList) {
+            numbersList.innerHTML = '';
+        }
+
+        // Reset round number and timer displays
+        const roundNumber = document.querySelector('.round-number');
+        if (roundNumber) {
+            roundNumber.textContent = '1';
+        }
+
+        const timeRemaining = document.querySelector('.time-remaining');
+        if (timeRemaining) {
+            timeRemaining.textContent = '30';
+        }
+
+        // Clear chat messages
+        const chatMessages = document.getElementById('chat-messages');
+        if (chatMessages) {
+            chatMessages.innerHTML = '';
+        }
+
+        // Clear any existing timers
+        if (this.timer) {
+            clearInterval(this.timer);
+            this.timer = null;
+        }
     }
 
     subscribeToRoom(roomId) {
