@@ -3,6 +3,36 @@ const path = require('path');
 const Pusher = require('pusher');
 const cors = require('cors');
 
+const app = express();
+
+// Most permissive CORS configuration - apply first
+app.use(cors({
+    origin: '*',
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept'],
+    credentials: true,
+    preflightContinue: true,
+    optionsSuccessStatus: 204
+}));
+
+// Handle OPTIONS requests
+app.options('*', (req, res) => {
+    res.header('Access-Control-Allow-Origin', '*');
+    res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+    res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, Accept');
+    res.header('Access-Control-Allow-Credentials', 'true');
+    res.sendStatus(204);
+});
+
+// Add CORS headers to all responses
+app.use((req, res, next) => {
+    res.header('Access-Control-Allow-Origin', '*');
+    res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+    res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, Accept');
+    res.header('Access-Control-Allow-Credentials', 'true');
+    next();
+});
+
 // Initialize Pusher with correct configuration
 const pusher = new Pusher({
     appId: "1919360",
@@ -15,22 +45,9 @@ const pusher = new Pusher({
     encrypted: true
 });
 
-const app = express();
-
 // Game state storage
 const rooms = new Map();
 const games = new Map();
-
-// Configure CORS
-app.use(cors({
-    origin: true,
-    credentials: true,
-    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept']
-}));
-
-// Enable pre-flight across-the-board
-app.options('*', cors());
 
 // Parse JSON bodies
 app.use(express.json());
