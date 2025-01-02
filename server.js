@@ -9,33 +9,42 @@ const app = express();
 const corsOptions = {
     origin: ['https://borderland-sigma.vercel.app', 'http://localhost:3000'],
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept', 'Origin'],
     credentials: true,
-    optionsSuccessStatus: 200
+    optionsSuccessStatus: 200,
+    preflightContinue: false
 };
 
-// Apply CORS to all routes
+// Apply CORS middleware before any routes
 app.use(cors(corsOptions));
 
-// Handle preflight requests for all routes
-app.options('*', cors(corsOptions));
+// Handle preflight requests
+app.options('*', (req, res) => {
+    res.header('Access-Control-Allow-Origin', req.headers.origin);
+    res.header('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE,OPTIONS');
+    res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, Accept, Origin');
+    res.header('Access-Control-Allow-Credentials', 'true');
+    res.status(200).send();
+});
 
 // Parse JSON bodies
 app.use(express.json());
 
-// Debugging middleware to log all requests
+// Add CORS headers to all responses
 app.use((req, res, next) => {
-    console.log(`${req.method} ${req.url}`);
-    console.log('Headers:', req.headers);
-    console.log('Body:', req.body);
-    
-    // Add CORS headers to all responses
-    res.header('Access-Control-Allow-Origin', req.headers.origin);
+    res.header('Access-Control-Allow-Origin', req.headers.origin || 'https://borderland-sigma.vercel.app');
     res.header('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE,OPTIONS');
-    res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, Accept');
-    res.header('Access-Control-Allow-Credentials', true);
-    
+    res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, Accept, Origin');
+    res.header('Access-Control-Allow-Credentials', 'true');
     next();
+});
+
+// Error handling middleware
+app.use((err, req, res, next) => {
+    console.error('Error:', err);
+    res.header('Access-Control-Allow-Origin', req.headers.origin || 'https://borderland-sigma.vercel.app');
+    res.header('Access-Control-Allow-Credentials', 'true');
+    res.status(500).json({ error: 'Internal server error' });
 });
 
 // Initialize Pusher with correct configuration
@@ -129,13 +138,24 @@ app.post('/join', async (req, res) => {
 // Start game
 app.post('/start-game', async (req, res) => {
     const { roomId } = req.body;
+    console.log('Attempting to start game for room:', roomId);
+    console.log('Available rooms:', Array.from(rooms.keys()));
+    
     const room = rooms.get(roomId);
+    console.log('Found room:', room);
 
     if (!room) {
-        return res.status(404).json({ error: 'Room not found' });
+        console.log('Room not found:', roomId);
+        return res.status(404).json({ error: 'Room not found', roomId });
+    }
+
+    if (room.gameStarted) {
+        console.log('Game already started in room:', roomId);
+        return res.status(400).json({ error: 'Game already started' });
     }
 
     if (room.players.length < 2) {
+        console.log('Not enough players in room:', roomId, 'Players:', room.players.length);
         return res.status(400).json({ error: 'Not enough players' });
     }
 
@@ -151,17 +171,23 @@ app.post('/start-game', async (req, res) => {
 
     games.set(gameId, game);
     room.gameStarted = true;
+    room.gameId = gameId; // Store game ID in room
 
     try {
+        console.log('Starting game:', gameId, 'in room:', roomId);
         // Notify all clients that the game has started
         await pusher.trigger(`game-channel-${roomId}`, 'game-start', {
             gameId,
             players: room.players
         });
         console.log('Game start event sent successfully');
-        res.json({ gameId });
+        res.json({ gameId, players: room.players });
     } catch (err) {
         console.error('Pusher event error:', err);
+        // Cleanup in case of error
+        games.delete(gameId);
+        room.gameStarted = false;
+        room.gameId = null;
         res.status(500).json({ error: 'Failed to start game' });
     }
 });

@@ -98,6 +98,16 @@ class DeathGame {
                 }
             });
         });
+
+        // Add exit room button listener
+        const exitButtons = document.querySelectorAll('.exit-room-btn');
+        exitButtons.forEach(btn => {
+            btn.addEventListener('click', () => {
+                if (confirm('Are you sure you want to exit the room?')) {
+                    this.exitRoom();
+                }
+            });
+        });
     }
 
     createRoom() {
@@ -1260,6 +1270,7 @@ class DeathGame {
     startGame() {
         if (!this.roomId) {
             console.error('No room ID found');
+            alert('Please join a room first');
             return;
         }
 
@@ -1270,6 +1281,12 @@ class DeathGame {
         if (startButton) {
             startButton.disabled = true;
             startButton.textContent = 'Starting game...';
+        }
+
+        // Ensure we're subscribed to the correct channel
+        if (!this.gameChannel || this.gameChannel.name !== `game-channel-${this.roomId}`) {
+            console.log('Resubscribing to game channel');
+            this.subscribeToRoom(this.roomId);
         }
 
         fetch(`${this.serverUrl}/start-game`, {
@@ -1284,7 +1301,9 @@ class DeathGame {
         .then(response => {
             console.log('Start game response:', response);
             if (!response.ok) {
-                throw new Error(`HTTP error! status: ${response.status}`);
+                return response.json().then(data => {
+                    throw new Error(data.error || `HTTP error! status: ${response.status}`);
+                });
             }
             return response.json();
         })
@@ -1292,6 +1311,7 @@ class DeathGame {
             console.log('Game started successfully:', data);
             this.gameId = data.gameId;
             this.gameStarted = true;
+            this.players = data.players;
 
             // Keep the game screen visible and remove other screens
             document.querySelectorAll('.screen').forEach(screen => {
@@ -1308,8 +1328,12 @@ class DeathGame {
                 gameId: this.gameId,
                 playerId: this.playerId,
                 playerName: this.playerName,
-                gameStarted: true
+                gameStarted: true,
+                players: this.players
             }));
+
+            // Initialize game UI
+            this.initializeGameUI();
         })
         .catch(error => {
             console.error('Error starting game:', error);
@@ -1318,8 +1342,90 @@ class DeathGame {
                 startButton.disabled = false;
                 startButton.textContent = 'Start Game';
             }
-            alert('Failed to start game. Please try again.');
+            alert(`Failed to start game: ${error.message}`);
         });
+    }
+
+    initializeGameUI() {
+        // Initialize player cards
+        const playersGrid = document.createElement('div');
+        playersGrid.className = 'players-grid';
+        this.players.forEach(player => {
+            const playerCard = document.createElement('div');
+            playerCard.className = `player-card ${player.id === this.playerId ? 'current-player' : ''}`;
+            playerCard.dataset.playerId = player.id;
+            playerCard.innerHTML = `
+                <div class="player-header">
+                    <span class="player-icon">${player.isBot ? '🤖' : '👤'}</span>
+                    <span class="player-name">${player.name}</span>
+                </div>
+                <div class="player-stats">
+                    <div class="player-points">
+                        <span class="points-label">Points:</span>
+                        <span class="points-value">0</span>
+                    </div>
+                    <div class="player-status">Ready</div>
+                </div>
+            `;
+            playersGrid.appendChild(playerCard);
+        });
+
+        // Clear and update game board
+        const gameBoard = document.querySelector('.game-board');
+        if (gameBoard) {
+            gameBoard.innerHTML = '';
+            gameBoard.appendChild(playersGrid);
+
+            // Add number grid
+            const numberGridContainer = document.createElement('div');
+            numberGridContainer.className = 'number-grid';
+            for (let i = 0; i <= 100; i++) {
+                const button = document.createElement('button');
+                button.className = 'number-btn';
+                button.textContent = i;
+                button.dataset.number = i;
+                button.addEventListener('click', () => {
+                    document.querySelectorAll('.number-btn').forEach(btn => {
+                        btn.classList.remove('selected');
+                    });
+                    button.classList.add('selected');
+                    this.selectedNumber = i;
+                    const submitBtn = document.getElementById('submit-number');
+                    if (submitBtn) {
+                        submitBtn.disabled = false;
+                        submitBtn.classList.add('ready');
+                    }
+                });
+                numberGridContainer.appendChild(button);
+            }
+            gameBoard.appendChild(numberGridContainer);
+
+            // Add submit button
+            const submitButton = document.createElement('button');
+            submitButton.id = 'submit-number';
+            submitButton.className = 'submit-btn';
+            submitButton.disabled = true;
+            submitButton.textContent = 'Submit Number';
+            submitButton.addEventListener('click', () => this.submitNumber());
+            gameBoard.appendChild(submitButton);
+        }
+
+        // Initialize round number and timer
+        const roundNumber = document.querySelector('.round-number');
+        if (roundNumber) {
+            roundNumber.textContent = this.currentRound;
+        }
+
+        const timeRemaining = document.querySelector('.time-remaining');
+        if (timeRemaining) {
+            timeRemaining.textContent = this.players.length === 5 ? '30' : '300';
+        }
+
+        // Start the round timer
+        this.startRoundTimer();
+
+        // Play game start sound
+        this.playSound('buttonClick');
     }
 
     sendChatMessage() {
@@ -1436,6 +1542,41 @@ class DeathGame {
                 });
             }
         }
+    }
+
+    exitRoom() {
+        // Clear game state
+        this.roomId = null;
+        this.gameId = null;
+        this.playerId = null;
+        this.playerName = null;
+        this.gameStarted = false;
+        this.players = [];
+        this.selectedNumber = undefined;
+        
+        // Clear localStorage
+        localStorage.removeItem('gameState');
+
+        // Unsubscribe from current channel
+        if (this.gameChannel) {
+            this.pusher.unsubscribe(this.gameChannel.name);
+            this.gameChannel = null;
+        }
+
+        // Reset UI elements
+        document.querySelectorAll('.screen').forEach(screen => {
+            screen.classList.remove('active');
+        });
+        document.getElementById('room-screen').classList.add('active');
+
+        // Clear room number input
+        const roomInput = document.getElementById('room-number');
+        if (roomInput) {
+            roomInput.value = '';
+        }
+
+        // Play sound effect
+        this.playSound('buttonClick');
     }
 }
 

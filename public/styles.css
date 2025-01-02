@@ -1009,4 +1009,44 @@ body {
         opacity: 1;
         transform: translateY(0);
     }
+}
+
+.exit-room-btn {
+    padding: 10px 20px;
+    background: #e74c3c;
+    color: white;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 1em;
+    transition: all 0.3s ease;
+    margin-left: 10px;
+}
+
+.exit-room-btn:hover {
+    background: #c0392b;
+    transform: translateY(-1px);
+    box-shadow: 0 2px 8px rgba(231, 76, 60, 0.3);
+}
+
+.exit-room-btn:active {
+    transform: translateY(0);
+}
+
+.game-header .exit-room-btn {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    font-size: 0.9em;
+    padding: 8px 16px;
+}
+
+/* Update game controls to handle new button */
+.game-controls {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 15px;
+    margin-top: 20px;
+    flex-wrap: wrap;
 } 
