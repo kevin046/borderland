@@ -1,19 +1,18 @@
 {
   "name": "borderland-game",
   "version": "1.0.0",
-  "description": "��#\u0000 \u0000b\u0000o\u0000r\u0000d\u0000e\u0000r\u0000l\u0000a\u0000n\u0000d\u0000\r\u0000 \u0000",
-  "main": "game.js",
+  "description": "Borderland Game Server",
+  "main": "server.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
-    "start": "node server.js"
+    "start": "node server.js",
+    "dev": "nodemon server.js"
   },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
   "dependencies": {
+    "express": "^4.18.2",
     "cors": "^2.8.5",
-    "express": "^4.21.2",
-    "pusher": "^5.2.0",
-    "ws": "^8.18.0"
+    "pusher": "^5.2.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
   }
 }

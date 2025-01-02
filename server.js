@@ -41,8 +41,7 @@ const pusher = new Pusher({
     cluster: "us2",
     useTLS: true,
     host: 'api-us2.pusher.com',
-    port: 443,
-    encrypted: true
+    port: 443
 });
 
 // Game state storage
