@@ -1,5 +1,7 @@
 class DeathGame {
     constructor() {
+        this.serverUrl = 'https://borderland-1.onrender.com';
+        
         this.pusher = new Pusher('e6a64e50330db39ab319', {
             cluster: 'us2'
         });
@@ -17,11 +19,6 @@ class DeathGame {
         this.gameStarted = false; // Add flag to track if game has started
         this.roomId = null; // Store current room ID
         
-        // Set server URL based on environment
-        this.serverUrl = window.location.hostname === 'localhost' 
-            ? 'http://localhost:3000' 
-            : 'https://borderland-game-server.onrender.com';
-            
         this.setupAudio();
         this.initializeEventListeners();
     }
