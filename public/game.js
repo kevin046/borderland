@@ -29,40 +29,44 @@ class DeathGame {
 
     // Helper method to make fetch requests with CORS headers
     async fetchWithCORS(url, options = {}) {
-        const defaultOptions = {
-            mode: 'cors',
-            headers: {
-                'Content-Type': 'application/json',
-                'Accept': 'application/json'
-            }
-        };
-
-        // Don't spread headers, set them explicitly
-        const mergedOptions = {
-            ...defaultOptions,
-            ...options,
-            headers: {
-                'Content-Type': 'application/json',
-                'Accept': 'application/json'
-            }
-        };
-
         try {
-            console.log('Sending request to:', url, 'with options:', mergedOptions);
-            const response = await fetch(url, mergedOptions);
+            console.log('Making request to:', url);
             
-            // Log the response headers for debugging
-            console.log('Response headers:', [...response.headers.entries()]);
+            const response = await fetch(url, {
+                ...options,
+                method: options.method || 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                mode: 'cors'
+            });
+            
+            // Log response details for debugging
+            console.log('Response status:', response.status);
+            console.log('Response headers:', {
+                'content-type': response.headers.get('content-type'),
+                'access-control-allow-origin': response.headers.get('access-control-allow-origin')
+            });
             
             if (!response.ok) {
-                const errorText = await response.text();
-                console.error('Server error response:', errorText);
-                throw new Error(`HTTP error! status: ${response.status}, body: ${errorText}`);
+                let errorMessage;
+                try {
+                    const errorData = await response.text();
+                    errorMessage = `Server error: ${response.status} - ${errorData}`;
+                } catch (e) {
+                    errorMessage = `Server error: ${response.status}`;
+                }
+                throw new Error(errorMessage);
             }
             
             return response;
         } catch (error) {
-            console.error('Fetch error:', error);
+            console.error('Request failed:', error);
+            // Add specific error handling for CORS errors
+            if (error.message.includes('CORS')) {
+                console.error('CORS error detected. Please ensure the server is configured correctly.');
+                throw new Error('Unable to connect to server due to CORS policy. Please try again later.');
+            }
             throw error;
         }
     }
