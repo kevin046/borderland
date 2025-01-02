@@ -77,9 +77,11 @@ class DeathGame {
         fetch(`${this.serverUrl}/create-room`, {
             method: 'POST',
             headers: {
-                'Content-Type': 'application/json'
+                'Content-Type': 'application/json',
+                'Accept': 'application/json'
             },
             mode: 'cors',
+            credentials: 'include',
             body: JSON.stringify({ roomId })
         })
         .then(response => {
@@ -117,9 +119,11 @@ class DeathGame {
         fetch(`${this.serverUrl}/join-room`, {
             method: 'POST',
             headers: {
-                'Content-Type': 'application/json'
+                'Content-Type': 'application/json',
+                'Accept': 'application/json'
             },
             mode: 'cors',
+            credentials: 'include',
             body: JSON.stringify({ roomId })
         })
         .then(response => {
@@ -352,9 +356,11 @@ class DeathGame {
         fetch(`${this.serverUrl}/join`, {
             method: 'POST',
             headers: {
-                'Content-Type': 'application/json'
+                'Content-Type': 'application/json',
+                'Accept': 'application/json'
             },
             mode: 'cors',
+            credentials: 'include',
             body: JSON.stringify({
                 roomId: this.roomId,
                 playerName: name,
@@ -410,13 +416,15 @@ class DeathGame {
         fetch(`${this.serverUrl}/join`, {
             method: 'POST',
             headers: {
-                'Content-Type': 'application/json'
+                'Content-Type': 'application/json',
+                'Accept': 'application/json'
             },
             mode: 'cors',
+            credentials: 'include',
             body: JSON.stringify({
                 roomId: this.roomId,
                 playerName: botName,
-                spotIndex: Number(index), // Ensure index is a number
+                spotIndex: Number(index),
                 isBot: true
             })
         })
@@ -534,9 +542,11 @@ class DeathGame {
         return fetch(`${this.serverUrl}/submit-number`, {
             method: 'POST',
             headers: {
-                'Content-Type': 'application/json'
+                'Content-Type': 'application/json',
+                'Accept': 'application/json'
             },
             mode: 'cors',
+            credentials: 'include',
             body: JSON.stringify({
                 roomId: roomId,
                 gameId: gameId,

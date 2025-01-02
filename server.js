@@ -17,14 +17,25 @@ app.options('*', cors());
 
 // Enable CORS for all routes
 app.use((req, res, next) => {
-    const allowedOrigins = ['http://localhost:3000', 'https://borderland-sigma.vercel.app'];
+    const allowedOrigins = [
+        'http://localhost:3000', 
+        'https://borderland-sigma.vercel.app',
+        'https://borderland-game.vercel.app'
+    ];
     const origin = req.headers.origin;
     
     if (allowedOrigins.includes(origin)) {
         res.header('Access-Control-Allow-Origin', origin);
         res.header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
         res.header('Access-Control-Allow-Headers', 'Content-Type');
+        res.header('Access-Control-Allow-Credentials', 'true');
     }
+
+    // Handle preflight requests
+    if (req.method === 'OPTIONS') {
+        return res.status(200).end();
+    }
+
     next();
 });
 
