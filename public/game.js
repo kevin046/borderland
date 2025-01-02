@@ -74,10 +74,8 @@ class DeathGame {
         fetch(`${this.serverUrl}/create-room`, {
             method: 'POST',
             headers: {
-                'Content-Type': 'application/json',
-                'Accept': 'application/json'
+                'Content-Type': 'application/json'
             },
-            mode: 'cors',
             credentials: 'include',
             body: JSON.stringify({ roomId })
         })
@@ -116,10 +114,8 @@ class DeathGame {
         fetch(`${this.serverUrl}/join-room`, {
             method: 'POST',
             headers: {
-                'Content-Type': 'application/json',
-                'Accept': 'application/json'
+                'Content-Type': 'application/json'
             },
-            mode: 'cors',
             credentials: 'include',
             body: JSON.stringify({ roomId })
         })
@@ -353,10 +349,8 @@ class DeathGame {
         fetch(`${this.serverUrl}/join`, {
             method: 'POST',
             headers: {
-                'Content-Type': 'application/json',
-                'Accept': 'application/json'
+                'Content-Type': 'application/json'
             },
-            mode: 'cors',
             credentials: 'include',
             body: JSON.stringify({
                 roomId: this.roomId,
@@ -413,10 +407,8 @@ class DeathGame {
         fetch(`${this.serverUrl}/join`, {
             method: 'POST',
             headers: {
-                'Content-Type': 'application/json',
-                'Accept': 'application/json'
+                'Content-Type': 'application/json'
             },
-            mode: 'cors',
             credentials: 'include',
             body: JSON.stringify({
                 roomId: this.roomId,
@@ -539,10 +531,8 @@ class DeathGame {
         return fetch(`${this.serverUrl}/submit-number`, {
             method: 'POST',
             headers: {
-                'Content-Type': 'application/json',
-                'Accept': 'application/json'
+                'Content-Type': 'application/json'
             },
-            mode: 'cors',
             credentials: 'include',
             body: JSON.stringify({
                 roomId: roomId,

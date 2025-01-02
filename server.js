@@ -5,19 +5,17 @@ const cors = require('cors');
 
 const app = express();
 
-// Most permissive CORS configuration - apply first
+// CORS configuration with specific origin
 app.use(cors({
-    origin: '*',
+    origin: 'https://borderland-sigma.vercel.app',
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept'],
-    credentials: true,
-    preflightContinue: true,
-    optionsSuccessStatus: 204
+    credentials: true
 }));
 
 // Handle OPTIONS requests
 app.options('*', (req, res) => {
-    res.header('Access-Control-Allow-Origin', '*');
+    res.header('Access-Control-Allow-Origin', 'https://borderland-sigma.vercel.app');
     res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
     res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, Accept');
     res.header('Access-Control-Allow-Credentials', 'true');
@@ -26,7 +24,7 @@ app.options('*', (req, res) => {
 
 // Add CORS headers to all responses
 app.use((req, res, next) => {
-    res.header('Access-Control-Allow-Origin', '*');
+    res.header('Access-Control-Allow-Origin', 'https://borderland-sigma.vercel.app');
     res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
     res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, Accept');
     res.header('Access-Control-Allow-Credentials', 'true');
