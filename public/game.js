@@ -76,7 +76,6 @@ class DeathGame {
             headers: {
                 'Content-Type': 'application/json'
             },
-            credentials: 'include',
             body: JSON.stringify({ roomId })
         })
         .then(response => {
@@ -116,7 +115,6 @@ class DeathGame {
             headers: {
                 'Content-Type': 'application/json'
             },
-            credentials: 'include',
             body: JSON.stringify({ roomId })
         })
         .then(response => {
@@ -351,7 +349,6 @@ class DeathGame {
             headers: {
                 'Content-Type': 'application/json'
             },
-            credentials: 'include',
             body: JSON.stringify({
                 roomId: this.roomId,
                 playerName: name,
@@ -409,7 +406,6 @@ class DeathGame {
             headers: {
                 'Content-Type': 'application/json'
             },
-            credentials: 'include',
             body: JSON.stringify({
                 roomId: this.roomId,
                 playerName: botName,
@@ -533,7 +529,6 @@ class DeathGame {
             headers: {
                 'Content-Type': 'application/json'
             },
-            credentials: 'include',
             body: JSON.stringify({
                 roomId: roomId,
                 gameId: gameId,
