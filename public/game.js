@@ -22,6 +22,9 @@ class DeathGame {
         
         this.setupAudio();
         this.initializeEventListeners();
+
+        // Add state restoration on page load
+        this.restoreGameState();
     }
 
     initializeEventListeners() {
@@ -941,16 +944,23 @@ class DeathGame {
         this.gameId = data.gameId;
         this.players = data.players; // Store players data
         
-        // Hide all screens first
+        // Ensure we're on the game screen
         document.querySelectorAll('.screen').forEach(screen => {
-            screen.classList.remove('active');
+            if (screen.id === 'game-screen') {
+                screen.classList.add('active');
+            } else {
+                screen.classList.remove('active');
+            }
         });
 
-        // Show game screen
-        const gameScreen = document.getElementById('game-screen');
-        if (gameScreen) {
-            gameScreen.classList.add('active');
-        }
+        // Store game state
+        localStorage.setItem('gameState', JSON.stringify({
+            roomId: this.roomId,
+            gameId: this.gameId,
+            playerId: this.playerId,
+            playerName: this.playerName,
+            gameStarted: true
+        }));
 
         // Initialize player cards
         const playersGrid = document.createElement('div');
@@ -1255,6 +1265,13 @@ class DeathGame {
 
         console.log('Starting game in room:', this.roomId);
 
+        // Disable start button to prevent multiple clicks
+        const startButton = document.getElementById('start-game');
+        if (startButton) {
+            startButton.disabled = true;
+            startButton.textContent = 'Starting game...';
+        }
+
         fetch(`${this.serverUrl}/start-game`, {
             method: 'POST',
             headers: {
@@ -1267,20 +1284,36 @@ class DeathGame {
         .then(response => {
             console.log('Start game response:', response);
             if (!response.ok) {
-                return response.text().then(text => {
-                    throw new Error(`HTTP error! status: ${response.status}, body: ${text}`);
-                });
+                throw new Error(`HTTP error! status: ${response.status}`);
             }
             return response.json();
         })
         .then(data => {
             console.log('Game started successfully:', data);
             this.gameId = data.gameId;
+            this.gameStarted = true;
+
+            // Keep the game screen visible and remove other screens
+            document.querySelectorAll('.screen').forEach(screen => {
+                if (screen.id === 'game-screen') {
+                    screen.classList.add('active');
+                } else {
+                    screen.classList.remove('active');
+                }
+            });
+
+            // Store the current game state
+            localStorage.setItem('gameState', JSON.stringify({
+                roomId: this.roomId,
+                gameId: this.gameId,
+                playerId: this.playerId,
+                playerName: this.playerName,
+                gameStarted: true
+            }));
         })
         .catch(error => {
             console.error('Error starting game:', error);
             // Re-enable the start button if there was an error
-            const startButton = document.getElementById('start-game');
             if (startButton) {
                 startButton.disabled = false;
                 startButton.textContent = 'Start Game';
@@ -1377,6 +1410,30 @@ class DeathGame {
             const minimizeBtn = chatBox.querySelector('.minimize-btn');
             if (minimizeBtn) {
                 minimizeBtn.innerHTML = '−';
+            }
+        }
+    }
+
+    // Add method to restore game state
+    restoreGameState() {
+        const savedState = localStorage.getItem('gameState');
+        if (savedState) {
+            const state = JSON.parse(savedState);
+            if (state.gameStarted) {
+                this.roomId = state.roomId;
+                this.gameId = state.gameId;
+                this.playerId = state.playerId;
+                this.playerName = state.playerName;
+                this.gameStarted = true;
+
+                // Show game screen
+                document.querySelectorAll('.screen').forEach(screen => {
+                    if (screen.id === 'game-screen') {
+                        screen.classList.add('active');
+                    } else {
+                        screen.classList.remove('active');
+                    }
+                });
             }
         }
     }

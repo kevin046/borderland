@@ -6,23 +6,37 @@ const cors = require('cors');
 const app = express();
 
 // CORS configuration
-app.use(cors({
-    origin: 'https://borderland-sigma.vercel.app',
+const corsOptions = {
+    origin: ['https://borderland-sigma.vercel.app', 'http://localhost:3000'],
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept'],
+    credentials: true,
     optionsSuccessStatus: 200
-}));
+};
 
-// Handle preflight requests
-app.options('*', cors({
-    origin: 'https://borderland-sigma.vercel.app',
-    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept'],
-    optionsSuccessStatus: 200
-}));
+// Apply CORS to all routes
+app.use(cors(corsOptions));
+
+// Handle preflight requests for all routes
+app.options('*', cors(corsOptions));
 
 // Parse JSON bodies
 app.use(express.json());
+
+// Debugging middleware to log all requests
+app.use((req, res, next) => {
+    console.log(`${req.method} ${req.url}`);
+    console.log('Headers:', req.headers);
+    console.log('Body:', req.body);
+    
+    // Add CORS headers to all responses
+    res.header('Access-Control-Allow-Origin', req.headers.origin);
+    res.header('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE,OPTIONS');
+    res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, Accept');
+    res.header('Access-Control-Allow-Credentials', true);
+    
+    next();
+});
 
 // Initialize Pusher with correct configuration
 const pusher = new Pusher({
@@ -38,14 +52,6 @@ const pusher = new Pusher({
 // Game state storage
 const rooms = new Map();
 const games = new Map();
-
-// Debugging middleware
-app.use((req, res, next) => {
-    console.log(`${req.method} ${req.url}`);
-    console.log('Headers:', req.headers);
-    console.log('Body:', req.body);
-    next();
-});
 
 // Create a new room
 app.post('/create-room', (req, res) => {
