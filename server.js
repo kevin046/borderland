@@ -9,41 +9,29 @@ const app = express();
 const corsOptions = {
     origin: ['https://borderland-sigma.vercel.app', 'http://localhost:3000'],
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept', 'Origin'],
-    credentials: true,
-    optionsSuccessStatus: 200,
-    preflightContinue: false
+    allowedHeaders: ['Content-Type'],
+    credentials: false,
+    optionsSuccessStatus: 200
 };
 
 // Apply CORS middleware before any routes
 app.use(cors(corsOptions));
-
-// Handle preflight requests
-app.options('*', (req, res) => {
-    res.header('Access-Control-Allow-Origin', req.headers.origin);
-    res.header('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE,OPTIONS');
-    res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, Accept, Origin');
-    res.header('Access-Control-Allow-Credentials', 'true');
-    res.status(200).send();
-});
 
 // Parse JSON bodies
 app.use(express.json());
 
 // Add CORS headers to all responses
 app.use((req, res, next) => {
-    res.header('Access-Control-Allow-Origin', req.headers.origin || 'https://borderland-sigma.vercel.app');
-    res.header('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE,OPTIONS');
-    res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, Accept, Origin');
-    res.header('Access-Control-Allow-Credentials', 'true');
+    res.header('Access-Control-Allow-Origin', 'https://borderland-sigma.vercel.app');
+    res.header('Access-Control-Allow-Methods', 'GET,POST,OPTIONS');
+    res.header('Access-Control-Allow-Headers', 'Content-Type');
     next();
 });
 
 // Error handling middleware
 app.use((err, req, res, next) => {
     console.error('Error:', err);
-    res.header('Access-Control-Allow-Origin', req.headers.origin || 'https://borderland-sigma.vercel.app');
-    res.header('Access-Control-Allow-Credentials', 'true');
+    res.header('Access-Control-Allow-Origin', 'https://borderland-sigma.vercel.app');
     res.status(500).json({ error: 'Internal server error' });
 });
 
