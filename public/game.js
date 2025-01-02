@@ -18,6 +18,7 @@ class DeathGame {
         this.currentPlayer = null; // Store current player's spot
         this.gameStarted = false; // Add flag to track if game has started
         this.roomId = null; // Store current room ID
+        this.playerName = null; // Store player's name
         
         this.setupAudio();
         this.initializeEventListeners();
@@ -41,6 +42,7 @@ class DeathGame {
                 // Disable the button immediately to prevent double clicks
                 startButton.disabled = true;
                 startButton.textContent = 'Waiting for game to start...';
+                this.startGame();
             });
         }
 
@@ -57,6 +59,22 @@ class DeathGame {
         // Name modal buttons
         document.getElementById('confirm-name').addEventListener('click', () => this.confirmJoin());
         document.getElementById('cancel-join').addEventListener('click', () => this.hideNameModal());
+
+        // Add chat event listeners
+        const chatInput = document.getElementById('chat-input');
+        const sendButton = document.getElementById('send-message');
+
+        if (chatInput && sendButton) {
+            // Send message on button click
+            sendButton.addEventListener('click', () => this.sendChatMessage());
+
+            // Send message on Enter key
+            chatInput.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') {
+                    this.sendChatMessage();
+                }
+            });
+        }
     }
 
     createRoom() {
@@ -150,171 +168,38 @@ class DeathGame {
     setupPusher() {
         if (!this.gameChannel) return;
 
-        this.gameChannel.bind('waiting-room-update', data => {
-            console.log('Waiting room update:', data);
+        // Handle waiting room updates
+        this.gameChannel.bind('waiting-room-update', (data) => {
+            console.log('Received waiting room update:', data);
             this.updateWaitingRoom(data.players);
         });
 
-        this.gameChannel.bind('game-start', data => {
-            console.log('Game start event received:', data);
+        // Handle game start event
+        this.gameChannel.bind('game-start', (data) => {
+            console.log('Received game start event:', data);
+            this.gameId = data.gameId;
             this.handleGameStart(data);
         });
 
-        this.gameChannel.bind('round-result', data => {
-            console.log('Round result received from server:', data);
-            
-            // Clear any pending bot submission messages
-            const botMessages = document.querySelector('.bot-messages');
-            if (botMessages) {
-                botMessages.innerHTML = '';
-            }
-
-            // Disable all number buttons and submit button
-            const numberBtns = document.querySelectorAll('.number-btn');
-            const submitBtn = document.getElementById('submit-number');
-            numberBtns.forEach(btn => {
-                btn.disabled = true;
-                btn.classList.remove('selected');
-            });
-            if (submitBtn) {
-                submitBtn.disabled = true;
-                submitBtn.classList.remove('ready');
-            }
-
-            // Update status message
-            const statusMessage = document.querySelector('.status-message');
-            if (statusMessage) {
-                statusMessage.textContent = 'Round complete! Calculating results...';
-            }
-
-            // Update average and target immediately
-            const averageDisplay = document.querySelector('.average');
-            const targetDisplay = document.querySelector('.target');
-            
-            if (averageDisplay) {
-                averageDisplay.textContent = data.average.toFixed(2);
-            }
-            
-            if (targetDisplay) {
-                targetDisplay.textContent = data.target.toFixed(2);
-            }
-
-            // Clear and update the numbers list
-            const numbersList = document.querySelector('.numbers-list');
-            if (numbersList) {
-                numbersList.innerHTML = '';
-                
-                // Sort results by distance
-                const sortedResults = [...data.results].sort((a, b) => a.distance - b.distance);
-                
-                sortedResults.forEach(result => {
-                    const submissionEntry = document.createElement('div');
-                    submissionEntry.className = `submission-entry ${result.isWinner ? 'winner' : ''} ${!result.isAlive ? 'eliminated' : ''} ${result.invalid ? 'invalid' : ''}`;
-                    
-                    submissionEntry.innerHTML = `
-                        <div class="player-info">
-                            <span class="player-icon">${result.isBot ? '🤖' : '👤'}</span>
-                            <span class="player-name">${result.player}</span>
-                        </div>
-                        <div class="submission-details">
-                            <span class="number-submitted">Number: ${result.number}</span>
-                            <span class="distance">Distance: ${result.distance.toFixed(2)}</span>
-                            <span class="points ${result.points < 0 ? 'negative' : ''}">Points: ${result.points > 0 ? '+' : ''}${result.points}</span>
-                        </div>
-                        <div class="status-badges">
-                            ${result.isWinner ? '<span class="winner-badge">👑 Winner</span>' : ''}
-                            ${result.invalid ? '<span class="invalid-badge">❌ Invalid</span>' : ''}
-                            ${!result.isAlive ? '<span class="eliminated-badge">💀 Eliminated</span>' : ''}
-                        </div>
-                    `;
-                    
-                    numbersList.appendChild(submissionEntry);
-
-                    // Update player card
-                    const playerCard = document.querySelector(`.player-card[data-player-id="${result.playerId}"]`);
-                    if (playerCard) {
-                        const pointsValue = playerCard.querySelector('.points-value');
-                        const statusDiv = playerCard.querySelector('.player-status');
-
-                        if (pointsValue) {
-                            pointsValue.textContent = result.totalPoints;
-                            pointsValue.className = `points-value ${result.totalPoints < 0 ? 'negative' : ''}`;
-                        }
-
-                        if (statusDiv) {
-                            if (!result.isAlive) {
-                                statusDiv.textContent = 'Eliminated';
-                                statusDiv.className = 'player-status eliminated';
-                                playerCard.classList.add('eliminated');
-                            } else if (result.isWinner) {
-                                statusDiv.textContent = 'Winner!';
-                                statusDiv.className = 'player-status winner';
-                            } else {
-                                statusDiv.textContent = 'Ready';
-                                statusDiv.className = 'player-status';
-                            }
-                        }
-                    }
-                });
-            }
-
-            // Play appropriate sound effects
-            if (data.results.some(r => !r.isAlive)) {
-                this.playSound('elimination');
-            } else if (data.results.some(r => r.isWinner)) {
-                this.playSound('winner');
-            }
-
-            // Start 10-second cooldown
-            let countdown = 10;
-            if (statusMessage) {
-                statusMessage.textContent = `Next round starting in ${countdown} seconds...`;
-            }
-
-            const countdownInterval = setInterval(() => {
-                countdown--;
-                if (statusMessage) {
-                    statusMessage.textContent = `Next round starting in ${countdown} seconds...`;
-                }
-                
-                if (countdown <= 0) {
-                    clearInterval(countdownInterval);
-                    const currentPlayerResult = data.results.find(r => r.playerId === this.playerId);
-                    if (currentPlayerResult && currentPlayerResult.isAlive) {
-                        // Increment round number
-                        this.currentRound++;
-                        const roundNumber = document.querySelector('.round-number');
-                        if (roundNumber) {
-                            roundNumber.textContent = this.currentRound;
-                        }
-
-                        // Re-enable buttons for next round
-                        numberBtns.forEach(btn => {
-                            btn.disabled = false;
-                            btn.classList.remove('disabled');
-                        });
-
-                        // Update status message
-                        if (statusMessage) {
-                            statusMessage.textContent = 'Choose your number for the next round...';
-                        }
-
-                        // Start new round timer
-                        this.startRoundTimer();
-                    }
-                }
-            }, 1000);
+        // Handle round results
+        this.gameChannel.bind('round-result', (data) => {
+            console.log('Received round result:', data);
+            this.handleRoundResult(data);
         });
 
-        this.gameChannel.bind('bot-submit', data => {
-            console.log('Bot submission received:', data);
-            const botMessages = document.querySelector('.bot-messages');
-            if (botMessages) {
-                const botMessage = document.createElement('div');
-                botMessage.className = 'bot-message';
-                botMessage.textContent = `${data.botName} submitted their number...`;
-                botMessages.appendChild(botMessage);
-            }
+        // Log connection status
+        this.gameChannel.bind('pusher:subscription_succeeded', () => {
+            console.log('Successfully subscribed to game channel');
+        });
+
+        this.gameChannel.bind('pusher:subscription_error', (error) => {
+            console.error('Error subscribing to game channel:', error);
+        });
+
+        // Add chat message binding
+        this.gameChannel.bind('chat-message', (data) => {
+            console.log('Received chat message:', data);
+            this.displayChatMessage(data.playerName, data.message, data.playerId === this.playerId);
         });
     }
 
@@ -337,6 +222,9 @@ class DeathGame {
             alert('No room selected');
             return;
         }
+
+        // Store player name for chat
+        this.playerName = name;
 
         console.log('Attempting to join room:', {
             roomId: this.roomId,
@@ -679,7 +567,8 @@ class DeathGame {
             buttonClick: document.getElementById('buttonClick'),
             submit: document.getElementById('submitSound'),
             winner: document.getElementById('winnerSound'),
-            elimination: document.getElementById('eliminationSound')
+            elimination: document.getElementById('eliminationSound'),
+            message: document.getElementById('messageSound')
         };
 
         // Set volumes
@@ -688,6 +577,7 @@ class DeathGame {
         this.sounds.submit.volume = 0.6;
         this.sounds.winner.volume = 0.7;
         this.sounds.elimination.volume = 0.6;
+        this.sounds.message.volume = 0.5;
 
         // Preload audio files
         Object.values(this.sounds).forEach(sound => {
@@ -1030,171 +920,45 @@ class DeathGame {
         this.gameStarted = true;
         this.gameId = data.gameId;
         
-        // Store all players' information including bots
-        this.players = data.players.map(player => ({
-            id: player.id,
-            name: player.name,
-            isBot: player.isBot,
-            spotIndex: player.spotIndex
-        }));
-
-        // Hide the waiting room and show the game screen
+        // Hide the waiting room screen
         document.getElementById('login-screen').classList.remove('active');
         document.getElementById('game-screen').classList.add('active');
-
-        // Initialize the game UI
-        const gameScreen = document.getElementById('game-screen');
-        if (gameScreen) {
-            gameScreen.innerHTML = `
-                <div class="game-container">
-                    <div class="game-info">
-                        <div class="rules-section">
-                            <div class="section-header">
-                                <h3>🎮 Active Rules</h3>
-                                <div class="rule-divider"></div>
-                            </div>
-                            <div class="rules-list">
-                                <!-- Rules will be dynamically updated -->
-                            </div>
-                        </div>
-                        <div class="players-section">
-                            <div class="section-header">
-                                <h3>👥 Players</h3>
-                                <div class="player-divider"></div>
-                            </div>
-                            <div class="players-grid">
-                                ${this.players.map(player => `
-                                    <div class="player-card ${player.id === this.playerId ? 'current-player' : ''}" data-player-id="${player.id}">
-                                        <div class="player-header">
-                                            <span class="player-icon">${player.isBot ? '🤖' : '👤'}</span>
-                                            <span class="player-name">${player.name}</span>
-                                        </div>
-                                        <div class="player-stats">
-                                            <div class="player-points">
-                                                <span class="points-label">Points:</span>
-                                                <span class="points-value">0</span>
-                                            </div>
-                                            <div class="player-status ${player.id === this.playerId ? 'my-turn' : ''}">
-                                                Ready
-                                            </div>
-                                        </div>
-                                    </div>
-                                `).join('')}
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="game-play">
-                        <div class="round-header">
-                            <div class="round-info">
-                                <h2>Round <span class="round-number">1</span></h2>
-                                <div class="timer">
-                                    <span class="timer-icon">⏱️</span>
-                                    <span class="time-remaining">${this.players.length === 5 ? '30' : '300'}</span>s
-                                </div>
-                            </div>
-                        </div>
-
-                        <div class="number-selection">
-                            <div class="section-header">
-                                <h3>🎯 Select Your Number</h3>
-                            </div>
-                            <div class="number-grid">
-                                ${Array.from({length: 101}, (_, i) => i)
-                                    .map(num => `
-                                        <button class="number-btn" data-number="${num}">
-                                            ${num}
-                                        </button>
-                                    `).join('')}
-                            </div>
-                            <button id="submit-number" class="submit-btn" disabled>
-                                <span class="submit-icon">✨</span>
-                                Submit Number
-                            </button>
-                        </div>
-
-                        <div class="game-status">
-                            <div class="status-message">Choose your number from the grid above...</div>
-                            <div class="bot-messages"></div>
-                        </div>
-                    </div>
-
-                    <div class="results-section">
-                        <div class="section-header">
-                            <h3>📊 Round Results</h3>
-                            <div class="results-divider"></div>
-                        </div>
-                        <div class="results-content">
-                            <div class="round-stats">
-                                <div class="stat-item">
-                                    <span class="stat-label">Average:</span>
-                                    <span class="stat-value average">-</span>
-                                </div>
-                                <div class="stat-item">
-                                    <span class="stat-label">Target:</span>
-                                    <span class="stat-value target">-</span>
-                                </div>
-                            </div>
-                            <div class="submitted-numbers">
-                                <h4>📝 Submitted Numbers</h4>
-                                <div class="numbers-list"></div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            `;
-
-            // Update rules based on initial player count
-            this.updateRules(this.players.length);
-
-            // Add event listeners to number buttons
-            const numberBtns = document.querySelectorAll('.number-btn');
-            numberBtns.forEach(btn => {
-                btn.addEventListener('click', () => {
-                    // Remove selected class from all buttons
-                    numberBtns.forEach(b => b.classList.remove('selected'));
-                    // Add selected class to clicked button
-                    btn.classList.add('selected');
-                    // Store selected number
-                    this.selectedNumber = parseInt(btn.dataset.number);
-                    // Enable submit button
-                    const submitBtn = document.getElementById('submit-number');
-                    submitBtn.disabled = false;
-                    submitBtn.classList.add('ready');
-                    // Play sound
-                    this.playSound('buttonClick');
-                    // Update status message
-                    document.querySelector('.status-message').textContent = 
-                        `Number ${this.selectedNumber} selected. Click Submit to confirm.`;
-                });
-            });
-
-            // Add event listener to submit button
-            document.getElementById('submit-number').addEventListener('click', () => {
-                if (this.selectedNumber >= 0 && this.selectedNumber <= 100) {
-                    this.submitNumber();
-                    // Update status message
-                    document.querySelector('.status-message').textContent = 
-                        `Your number ${this.selectedNumber} has been submitted. Waiting for other players...`;
-                    // Disable all number buttons and submit button
-                    numberBtns.forEach(btn => {
-                        btn.disabled = true;
-                        btn.classList.add('disabled');
-                    });
-                    const submitBtn = document.getElementById('submit-number');
-                    submitBtn.disabled = true;
-                    submitBtn.classList.remove('ready');
-                }
-            });
+        
+        // Update UI elements
+        const startButton = document.getElementById('start-game');
+        if (startButton) {
+            startButton.style.display = 'none';
         }
 
-        // Start background music if not already playing
-        if (this.sounds.bgMusic && this.sounds.bgMusic.paused) {
-            this.sounds.bgMusic.play().catch(error => console.log('Background music autoplay prevented:', error));
+        // Show game elements
+        document.querySelector('.game-board').style.display = 'block';
+        document.querySelector('.round-info').style.display = 'block';
+        document.querySelector('.timer').style.display = 'block';
+
+        // Initialize round number
+        const roundNumber = document.querySelector('.round-number');
+        if (roundNumber) {
+            roundNumber.textContent = this.currentRound;
         }
 
-        // Start the timer for the first round
+        // Start the round timer
         this.startRoundTimer();
+
+        // Enable number buttons for selection
+        const numberBtns = document.querySelectorAll('.number-btn');
+        numberBtns.forEach(btn => {
+            btn.disabled = false;
+            btn.classList.remove('disabled');
+        });
+
+        // Update status message
+        const statusMessage = document.querySelector('.status-message');
+        if (statusMessage) {
+            statusMessage.textContent = 'Game started! Choose your number...';
+        }
+
+        // Play game start sound
+        this.playSound('gameStart');
     }
 
     startRoundTimer() {
@@ -1390,6 +1154,107 @@ class DeathGame {
                 }
             }
         }, 1000);
+    }
+
+    startGame() {
+        if (!this.roomId) {
+            console.error('No room ID found');
+            return;
+        }
+
+        console.log('Starting game in room:', this.roomId);
+
+        fetch(`${this.serverUrl}/start-game`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                roomId: this.roomId
+            })
+        })
+        .then(response => {
+            console.log('Start game response:', response);
+            if (!response.ok) {
+                return response.text().then(text => {
+                    throw new Error(`HTTP error! status: ${response.status}, body: ${text}`);
+                });
+            }
+            return response.json();
+        })
+        .then(data => {
+            console.log('Game started successfully:', data);
+            this.gameId = data.gameId;
+        })
+        .catch(error => {
+            console.error('Error starting game:', error);
+            // Re-enable the start button if there was an error
+            const startButton = document.getElementById('start-game');
+            if (startButton) {
+                startButton.disabled = false;
+                startButton.textContent = 'Start Game';
+            }
+            alert('Failed to start game. Please try again.');
+        });
+    }
+
+    sendChatMessage() {
+        const chatInput = document.getElementById('chat-input');
+        const message = chatInput.value.trim();
+
+        if (!message || !this.roomId || !this.playerName) return;
+
+        fetch(`${this.serverUrl}/send-message`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                roomId: this.roomId,
+                playerId: this.playerId,
+                playerName: this.playerName,
+                message: message
+            })
+        })
+        .then(response => {
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            return response.json();
+        })
+        .then(() => {
+            chatInput.value = ''; // Clear input after successful send
+        })
+        .catch(error => {
+            console.error('Error sending message:', error);
+            alert('Failed to send message. Please try again.');
+        });
+    }
+
+    displayChatMessage(playerName, message, isOwnMessage) {
+        const chatMessages = document.getElementById('chat-messages');
+        if (!chatMessages) return;
+
+        const messageDiv = document.createElement('div');
+        messageDiv.className = `chat-message ${isOwnMessage ? 'own' : 'other'}`;
+
+        const messageInfo = document.createElement('div');
+        messageInfo.className = 'message-info';
+        messageInfo.textContent = isOwnMessage ? 'You' : playerName;
+
+        const messageContent = document.createElement('div');
+        messageContent.className = 'message-content';
+        messageContent.textContent = message;
+
+        messageDiv.appendChild(messageInfo);
+        messageDiv.appendChild(messageContent);
+        chatMessages.appendChild(messageDiv);
+
+        // Scroll to bottom
+        chatMessages.scrollTop = chatMessages.scrollHeight;
+
+        // Play message sound
+        this.playSound('message');
     }
 }
 

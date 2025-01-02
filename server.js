@@ -246,6 +246,34 @@ app.get('/test-pusher', async (req, res) => {
     }
 });
 
+// Add chat message endpoint
+app.post('/send-message', async (req, res) => {
+    const { roomId, playerId, playerName, message } = req.body;
+    const room = rooms.get(roomId);
+
+    if (!room) {
+        return res.status(404).json({ error: 'Room not found' });
+    }
+
+    if (!room.players.some(p => p.id === playerId)) {
+        return res.status(403).json({ error: 'Player not in room' });
+    }
+
+    try {
+        // Broadcast the message to all players in the room
+        await pusher.trigger(`game-channel-${roomId}`, 'chat-message', {
+            playerId,
+            playerName,
+            message,
+            timestamp: new Date().toISOString()
+        });
+        res.json({ success: true });
+    } catch (err) {
+        console.error('Error sending chat message:', err);
+        res.status(500).json({ error: 'Failed to send message' });
+    }
+});
+
 // Start server
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {

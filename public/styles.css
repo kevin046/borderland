@@ -685,4 +685,117 @@ body {
     font-size: 0.9em;
     color: #6c757d;
     text-align: center;
+}
+
+.chat-box {
+    width: 300px;
+    height: 400px;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 10px;
+    margin: 20px;
+    display: flex;
+    flex-direction: column;
+    position: fixed;
+    right: 20px;
+    bottom: 20px;
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.chat-header {
+    padding: 10px;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 10px 10px 0 0;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.chat-header h3 {
+    margin: 0;
+    color: #fff;
+    font-size: 1.1em;
+}
+
+.chat-messages {
+    flex-grow: 1;
+    overflow-y: auto;
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.chat-message {
+    padding: 8px 12px;
+    border-radius: 15px;
+    max-width: 80%;
+    word-wrap: break-word;
+}
+
+.chat-message.own {
+    background: #4CAF50;
+    color: white;
+    align-self: flex-end;
+    margin-left: 20%;
+}
+
+.chat-message.other {
+    background: rgba(255, 255, 255, 0.2);
+    color: white;
+    align-self: flex-start;
+    margin-right: 20%;
+}
+
+.message-info {
+    font-size: 0.8em;
+    margin-bottom: 4px;
+}
+
+.chat-input-area {
+    padding: 10px;
+    display: flex;
+    gap: 10px;
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 0 0 10px 10px;
+}
+
+#chat-input {
+    flex-grow: 1;
+    padding: 8px;
+    border: none;
+    border-radius: 20px;
+    background: rgba(255, 255, 255, 0.1);
+    color: white;
+    outline: none;
+}
+
+#chat-input::placeholder {
+    color: rgba(255, 255, 255, 0.5);
+}
+
+#send-message {
+    padding: 8px 15px;
+    border: none;
+    border-radius: 20px;
+    background: #4CAF50;
+    color: white;
+    cursor: pointer;
+    transition: background 0.3s;
+}
+
+#send-message:hover {
+    background: #45a049;
+}
+
+/* Scrollbar styling for chat messages */
+.chat-messages::-webkit-scrollbar {
+    width: 6px;
+}
+
+.chat-messages::-webkit-scrollbar-track {
+    background: rgba(255, 255, 255, 0.1);
+}
+
+.chat-messages::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.3);
+    border-radius: 3px;
 } 

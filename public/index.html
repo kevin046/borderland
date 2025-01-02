@@ -117,6 +117,12 @@
     <audio id="eliminationSound">
         <source src="audio/elimination.mp3" type="audio/mpeg">
     </audio>
+    <audio id="buttonClickSound" src="sounds/button-click.mp3" preload="auto"></audio>
+    <audio id="submitSound" src="sounds/submit.mp3" preload="auto"></audio>
+    <audio id="winnerSound" src="sounds/winner.mp3" preload="auto"></audio>
+    <audio id="eliminationSound" src="sounds/elimination.mp3" preload="auto"></audio>
+    <audio id="messageSound" src="sounds/message.mp3" preload="auto"></audio>
+    <audio id="bgMusic" src="sounds/background-music.mp3" loop preload="auto"></audio>
     <script src="https://js.pusher.com/8.2.0/pusher.min.js"></script>
 </head>
 <body>
@@ -174,6 +180,20 @@
                     Players Ready: <span id="players-ready">0</span>/5
                 </div>
                 <button id="start-game" disabled>Start Game</button>
+            </div>
+            
+            <!-- Add chat box section -->
+            <div class="chat-box">
+                <div class="chat-header">
+                    <h3>Chat Room</h3>
+                </div>
+                <div class="chat-messages" id="chat-messages">
+                    <!-- Messages will be added here dynamically -->
+                </div>
+                <div class="chat-input-area">
+                    <input type="text" id="chat-input" placeholder="Type your message..." maxlength="100">
+                    <button id="send-message">Send</button>
+                </div>
             </div>
         </div>
 
