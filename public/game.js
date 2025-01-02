@@ -27,6 +27,38 @@ class DeathGame {
         this.restoreGameState();
     }
 
+    // Helper method to make fetch requests with CORS headers
+    async fetchWithCORS(url, options = {}) {
+        const defaultOptions = {
+            mode: 'cors',
+            credentials: 'include',
+            headers: {
+                'Content-Type': 'application/json',
+                'Access-Control-Allow-Origin': '*'
+            }
+        };
+
+        const mergedOptions = {
+            ...defaultOptions,
+            ...options,
+            headers: {
+                ...defaultOptions.headers,
+                ...(options.headers || {})
+            }
+        };
+
+        try {
+            const response = await fetch(url, mergedOptions);
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            return response;
+        } catch (error) {
+            console.error('Fetch error:', error);
+            throw error;
+        }
+    }
+
     initializeEventListeners() {
         // Room selection buttons
         document.getElementById('create-room').addEventListener('click', () => this.createRoom());
@@ -122,22 +154,11 @@ class DeathGame {
         console.log('Attempting to create room:', roomId);
         console.log('Server URL:', this.serverUrl);
 
-        fetch(`${this.serverUrl}/create-room`, {
+        this.fetchWithCORS(`${this.serverUrl}/create-room`, {
             method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
             body: JSON.stringify({ roomId })
         })
-        .then(response => {
-            console.log('Server response:', response);
-            if (!response.ok) {
-                return response.text().then(text => {
-                    throw new Error(`HTTP error! status: ${response.status}, body: ${text}`);
-                });
-            }
-            return response.json();
-        })
+        .then(response => response.json())
         .then(data => {
             console.log('Room created successfully:', data);
             this.roomId = data.roomId;
@@ -148,7 +169,7 @@ class DeathGame {
         .catch(error => {
             console.error('Detailed error creating room:', error);
             console.error('Error stack:', error.stack);
-            alert('Failed to create room. Please check the console for details.');
+            alert('Failed to create room. Please try again.');
         });
     }
 
@@ -161,19 +182,11 @@ class DeathGame {
             return;
         }
 
-        fetch(`${this.serverUrl}/join-room`, {
+        this.fetchWithCORS(`${this.serverUrl}/join-room`, {
             method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
             body: JSON.stringify({ roomId })
         })
-        .then(response => {
-            if (!response.ok) {
-                throw new Error(`HTTP error! status: ${response.status}`);
-            }
-            return response.json();
-        })
+        .then(response => response.json())
         .then(data => {
             console.log('Room joined:', data);
             this.roomId = data.roomId;
@@ -265,26 +278,15 @@ class DeathGame {
             spotIndex: this.selectedSpot
         });
 
-        fetch(`${this.serverUrl}/join`, {
+        this.fetchWithCORS(`${this.serverUrl}/join`, {
             method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
             body: JSON.stringify({
                 roomId: this.roomId,
                 playerName: name,
                 spotIndex: this.selectedSpot
             })
         })
-        .then(response => {
-            console.log('Join response:', response);
-            if (!response.ok) {
-                return response.text().then(text => {
-                    throw new Error(`HTTP error! status: ${response.status}, body: ${text}`);
-                });
-            }
-            return response.json();
-        })
+        .then(response => response.json())
         .then(data => {
             console.log('Join successful:', data);
             this.playerId = data.playerId;
@@ -297,7 +299,7 @@ class DeathGame {
         .catch(error => {
             console.error('Detailed error joining game:', error);
             console.error('Error stack:', error.stack);
-            alert('Failed to join game. Please check the console for details.');
+            alert('Failed to join game. Please try again.');
         });
     }
 
@@ -322,11 +324,8 @@ class DeathGame {
             isBot: true
         });
 
-        fetch(`${this.serverUrl}/join`, {
+        this.fetchWithCORS(`${this.serverUrl}/join`, {
             method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
             body: JSON.stringify({
                 roomId: this.roomId,
                 playerName: botName,
@@ -334,15 +333,7 @@ class DeathGame {
                 isBot: true
             })
         })
-        .then(response => {
-            console.log('Bot join response:', response);
-            if (!response.ok) {
-                return response.text().then(text => {
-                    throw new Error(`HTTP error! status: ${response.status}, body: ${text}`);
-                });
-            }
-            return response.json();
-        })
+        .then(response => response.json())
         .then(data => {
             console.log('Bot join successful:', data);
             // Bot joining is handled through waiting room update
@@ -445,11 +436,8 @@ class DeathGame {
     // Helper method to submit numbers to the server
     submitNumberToServer(roomId, gameId, playerId, number) {
         console.log('Submitting to server:', { roomId, gameId, playerId, number });
-        return fetch(`${this.serverUrl}/submit-number`, {
+        return this.fetchWithCORS(`${this.serverUrl}/submit-number`, {
             method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
             body: JSON.stringify({
                 roomId: roomId,
                 gameId: gameId,
@@ -457,12 +445,7 @@ class DeathGame {
                 number: number
             })
         })
-        .then(response => {
-            if (!response.ok) {
-                throw new Error(`HTTP error! status: ${response.status}`);
-            }
-            return response.json();
-        })
+        .then(response => response.json())
         .then(data => {
             console.log('Server response:', data);
             // Always treat "already submitted" as a success case
@@ -491,24 +474,15 @@ class DeathGame {
             return;
         }
 
-        fetch(`${this.serverUrl}/leave`, {
+        this.fetchWithCORS(`${this.serverUrl}/leave`, {
             method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            mode: 'cors',
             body: JSON.stringify({
                 roomId: this.roomId,
                 playerId: this.playerId,
                 spotIndex: this.currentPlayer
             })
         })
-        .then(response => {
-            if (!response.ok) {
-                throw new Error(`HTTP error! status: ${response.status}`);
-            }
-            return response.json();
-        })
+        .then(response => response.json())
         .then(data => {
             console.log('Leave game response:', data);
             this.removePlayerFromSpot(this.currentPlayer);
@@ -655,30 +629,19 @@ class DeathGame {
             const currentPlayerData = this.players.find(p => p.index === this.currentPlayer);
             if (currentPlayerData) {
                 // First, leave the current spot
-                fetch(`${this.serverUrl}/leave`, {
+                this.fetchWithCORS(`${this.serverUrl}/leave`, {
                     method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
                     body: JSON.stringify({
                         roomId: this.roomId,
                         playerId: this.playerId,
                         spotIndex: this.currentPlayer
                     })
                 })
-                .then(response => {
-                    if (!response.ok) {
-                        throw new Error(`HTTP error! status: ${response.status}`);
-                    }
-                    return response.json();
-                })
+                .then(response => response.json())
                 .then(() => {
                     // Then, join the new spot with the same name
-                    return fetch(`${this.serverUrl}/join`, {
+                    return this.fetchWithCORS(`${this.serverUrl}/join`, {
                         method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json'
-                        },
                         body: JSON.stringify({
                             roomId: this.roomId,
                             playerName: currentPlayerData.name,
@@ -686,12 +649,7 @@ class DeathGame {
                         })
                     });
                 })
-                .then(response => {
-                    if (!response.ok) {
-                        throw new Error(`HTTP error! status: ${response.status}`);
-                    }
-                    return response.json();
-                })
+                .then(response => response.json())
                 .then(data => {
                     console.log('Spot change response:', data);
                     this.playerId = data.playerId;
@@ -952,16 +910,16 @@ class DeathGame {
         console.log('Handling game start:', data);
         this.gameStarted = true;
         this.gameId = data.gameId;
-        this.players = data.players; // Store players data
+        this.players = data.players;
         
-        // Ensure we're on the game screen
+        // Hide all screens except game screen
         document.querySelectorAll('.screen').forEach(screen => {
-            if (screen.id === 'game-screen') {
-                screen.classList.add('active');
-            } else {
-                screen.classList.remove('active');
-            }
+            screen.style.display = 'none';
         });
+        const gameScreen = document.getElementById('game-screen');
+        if (gameScreen) {
+            gameScreen.style.display = 'block';
+        }
 
         // Store game state
         localStorage.setItem('gameState', JSON.stringify({
@@ -969,13 +927,14 @@ class DeathGame {
             gameId: this.gameId,
             playerId: this.playerId,
             playerName: this.playerName,
-            gameStarted: true
+            gameStarted: true,
+            players: this.players
         }));
 
         // Initialize player cards
         const playersGrid = document.createElement('div');
         playersGrid.className = 'players-grid';
-        data.players.forEach(player => {
+        this.players.forEach(player => {
             const playerCard = document.createElement('div');
             playerCard.className = `player-card ${player.id === this.playerId ? 'current-player' : ''}`;
             playerCard.dataset.playerId = player.id;
@@ -998,7 +957,9 @@ class DeathGame {
         // Clear and update game board
         const gameBoard = document.querySelector('.game-board');
         if (gameBoard) {
-            gameBoard.innerHTML = ''; // Clear existing content
+            gameBoard.innerHTML = '';
+            
+            // Add players grid
             gameBoard.appendChild(playersGrid);
 
             // Add number grid
@@ -1289,24 +1250,13 @@ class DeathGame {
             this.subscribeToRoom(this.roomId);
         }
 
-        fetch(`${this.serverUrl}/start-game`, {
+        this.fetchWithCORS(`${this.serverUrl}/start-game`, {
             method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
             body: JSON.stringify({
                 roomId: this.roomId
             })
         })
-        .then(response => {
-            console.log('Start game response:', response);
-            if (!response.ok) {
-                return response.json().then(data => {
-                    throw new Error(data.error || `HTTP error! status: ${response.status}`);
-                });
-            }
-            return response.json();
-        })
+        .then(response => response.json())
         .then(data => {
             console.log('Game started successfully:', data);
             this.gameId = data.gameId;
@@ -1454,11 +1404,8 @@ class DeathGame {
             message: message
         });
 
-        fetch(`${this.serverUrl}/send-message`, {
+        this.fetchWithCORS(`${this.serverUrl}/send-message`, {
             method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
             body: JSON.stringify({
                 roomId: this.roomId,
                 playerId: this.playerId,
@@ -1466,14 +1413,7 @@ class DeathGame {
                 message: message
             })
         })
-        .then(response => {
-            if (!response.ok) {
-                return response.text().then(text => {
-                    throw new Error(`HTTP error! status: ${response.status}, body: ${text}`);
-                });
-            }
-            return response.json();
-        })
+        .then(response => response.json())
         .then(data => {
             console.log('Message sent successfully:', data);
             chatInput.value = ''; // Clear input after successful send
