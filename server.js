@@ -12,16 +12,32 @@ const pusher = new Pusher({
 
 const app = express();
 
+// Enable pre-flight requests for all routes
+app.options('*', cors());
+
 // Enable CORS for all routes
-app.use(cors({
-    origin: 'https://borderland-sigma.vercel.app',
-    methods: ['GET', 'POST', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization'],
-    credentials: false // Set to false since we're not using cookies
-}));
+app.use((req, res, next) => {
+    const allowedOrigins = ['http://localhost:3000', 'https://borderland-sigma.vercel.app'];
+    const origin = req.headers.origin;
+    
+    if (allowedOrigins.includes(origin)) {
+        res.header('Access-Control-Allow-Origin', origin);
+        res.header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+        res.header('Access-Control-Allow-Headers', 'Content-Type');
+    }
+    next();
+});
 
 // Parse JSON bodies
 app.use(express.json());
+
+// Add debugging middleware
+app.use((req, res, next) => {
+    console.log(`${req.method} ${req.url}`);
+    console.log('Headers:', req.headers);
+    console.log('Body:', req.body);
+    next();
+});
 
 // Serve static files
 app.use(express.static(path.join(__dirname, 'public')));
@@ -29,6 +45,12 @@ app.use(express.static(path.join(__dirname, 'public')));
 // Serve index.html for the root route
 app.get('/', (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'index.html'));
+});
+
+// Add error handling middleware
+app.use((err, req, res, next) => {
+    console.error('Error:', err);
+    res.status(500).json({ error: err.message });
 });
 
 class GameServer {
@@ -279,7 +301,7 @@ class GameServer {
             console.log(`Bot ${bot.name} submitted number:`, botNumber);
 
             // Notify clients about bot submission
-            pusher.trigger('game-channel', 'bot-submit', {
+            pusher.trigger(`game-channel-${game.roomId}`, 'bot-submit', {
                 gameId: game.id,
                 botName: bot.name,
                 number: botNumber
@@ -347,7 +369,18 @@ class GameServer {
     }
 
     calculateRoundResults(gameId) {
-        const game = this.games.get(gameId);
+        // Find the room that contains this game
+        let targetRoom = null;
+        let game = null;
+
+        for (const [roomId, room] of this.rooms.entries()) {
+            if (room.games.has(gameId)) {
+                targetRoom = room;
+                game = room.games.get(gameId);
+                break;
+            }
+        }
+
         if (!game) {
             console.error('Game not found for results calculation:', gameId);
             return;
@@ -557,8 +590,22 @@ app.post('/join-room', (req, res) => {
 
 app.post('/join', (req, res) => {
     try {
+        console.log('Join request received:', req.body);
         const { roomId, playerName, spotIndex, isBot } = req.body;
-        const result = gameServer.handleJoin(roomId, playerName, spotIndex, isBot);
+
+        // Validate required fields
+        if (!roomId) {
+            throw new Error('roomId is required');
+        }
+        if (!playerName) {
+            throw new Error('playerName is required');
+        }
+        if (typeof spotIndex !== 'number' && spotIndex !== null) {
+            throw new Error('spotIndex must be a number or null');
+        }
+
+        const result = gameServer.handleJoin(roomId, playerName, spotIndex, isBot || false);
+        console.log('Join result:', result);
         res.json(result);
     } catch (error) {
         console.error('Join error:', error);
