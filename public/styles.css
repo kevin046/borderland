@@ -393,63 +393,71 @@ body {
 }
 
 .players-grid {
-    display: flex;
-    flex-direction: column;
-    gap: 12px;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 15px;
+    margin-bottom: 20px;
 }
 
 .player-card {
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-    padding: 12px;
-    border-radius: 8px;
-    background: #f8f9fa;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 12px;
+    padding: 15px;
     transition: all 0.3s ease;
+    border: 1px solid rgba(255, 255, 255, 0.1);
 }
 
 .player-card.current-player {
-    background: #e3f2fd;
-    border: 2px solid #90caf9;
+    background: rgba(76, 175, 80, 0.2);
+    border-color: rgba(76, 175, 80, 0.3);
+    box-shadow: 0 0 15px rgba(76, 175, 80, 0.1);
 }
 
 .player-header {
     display: flex;
     align-items: center;
     gap: 10px;
+    margin-bottom: 10px;
 }
 
 .player-icon {
-    font-size: 1.4em;
+    font-size: 1.5em;
 }
 
 .player-name {
-    font-weight: 600;
-    color: #2c3e50;
+    font-size: 1.1em;
+    font-weight: 500;
+    color: white;
 }
 
 .player-stats {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-top: 5px;
 }
 
 .player-points {
+    display: flex;
+    gap: 5px;
+    align-items: center;
+}
+
+.points-label {
+    color: rgba(255, 255, 255, 0.7);
     font-size: 0.9em;
-    color: #6c757d;
+}
+
+.points-value {
+    font-weight: 600;
+    color: #4CAF50;
 }
 
 .player-status {
-    font-size: 0.8em;
     padding: 4px 8px;
     border-radius: 12px;
-    background: #e9ecef;
-}
-
-.player-status.my-turn {
-    background: #d4edda;
-    color: #155724;
+    font-size: 0.8em;
+    background: rgba(255, 255, 255, 0.1);
+    color: white;
 }
 
 /* Game play section */

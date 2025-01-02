@@ -919,10 +919,35 @@ class DeathGame {
         console.log('Handling game start:', data);
         this.gameStarted = true;
         this.gameId = data.gameId;
+        this.players = data.players; // Store players data
         
         // Hide the waiting room screen and show game screen
         document.getElementById('login-screen').classList.remove('active');
         document.getElementById('game-screen').classList.add('active');
+
+        // Initialize player cards
+        const playersGrid = document.createElement('div');
+        playersGrid.className = 'players-grid';
+        data.players.forEach(player => {
+            const playerCard = document.createElement('div');
+            playerCard.className = `player-card ${player.id === this.playerId ? 'current-player' : ''}`;
+            playerCard.dataset.playerId = player.id;
+            playerCard.innerHTML = `
+                <div class="player-header">
+                    <span class="player-icon">${player.isBot ? '🤖' : '👤'}</span>
+                    <span class="player-name">${player.name}</span>
+                </div>
+                <div class="player-stats">
+                    <div class="player-points">
+                        <span class="points-label">Points:</span>
+                        <span class="points-value">0</span>
+                    </div>
+                    <div class="player-status">Ready</div>
+                </div>
+            `;
+            playersGrid.appendChild(playerCard);
+        });
+        document.querySelector('.game-board').insertBefore(playersGrid, document.querySelector('.number-grid'));
         
         // Initialize the number grid
         const numberGrid = document.querySelector('.number-grid');
