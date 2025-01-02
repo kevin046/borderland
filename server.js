@@ -5,11 +5,20 @@ const cors = require('cors');
 
 const app = express();
 
-// Simple CORS configuration
+// CORS configuration
 app.use(cors({
     origin: 'https://borderland-sigma.vercel.app',
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept']
+    allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept'],
+    optionsSuccessStatus: 200
+}));
+
+// Handle preflight requests
+app.options('*', cors({
+    origin: 'https://borderland-sigma.vercel.app',
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept'],
+    optionsSuccessStatus: 200
 }));
 
 // Parse JSON bodies
