@@ -211,13 +211,54 @@
 
         <!-- Game Screen -->
         <div id="game-screen" class="screen">
-            <div class="game-info">
-                <h2>Round <span id="round-number">1</span></h2>
-                <div id="timer">Time remaining: <span id="time">30</span>s</div>
-                <div id="current-rules"></div>
+            <div class="game-header">
+                <h2>Round <span class="round-number">1</span></h2>
+                <div class="timer">
+                    Time remaining: <span class="time-remaining">30</span>s
+                </div>
             </div>
-            <div class="players-grid"></div>
-            <div class="number-input"></div>
+            
+            <div class="game-board">
+                <div class="number-grid">
+                    <!-- Numbers will be generated dynamically -->
+                </div>
+                <button id="submit-number" class="submit-btn" disabled>Submit Number</button>
+            </div>
+
+            <div class="game-status">
+                <div class="status-message">Choose your number...</div>
+                <div class="bot-messages"></div>
+            </div>
+
+            <div class="results-section">
+                <div class="round-stats">
+                    <div class="stat-item">
+                        <span class="stat-label">Average:</span>
+                        <span class="average">-</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-label">Target:</span>
+                        <span class="target">-</span>
+                    </div>
+                </div>
+                <div class="numbers-list">
+                    <!-- Submitted numbers will appear here -->
+                </div>
+            </div>
+
+            <!-- Chat box remains visible during game -->
+            <div class="chat-box">
+                <div class="chat-header">
+                    <h3>Chat Room</h3>
+                </div>
+                <div class="chat-messages" id="chat-messages">
+                    <!-- Messages will be added here dynamically -->
+                </div>
+                <div class="chat-input-area">
+                    <input type="text" id="chat-input" placeholder="Type your message..." maxlength="100">
+                    <button id="send-message">Send</button>
+                </div>
+            </div>
         </div>
     </div>
     <script>

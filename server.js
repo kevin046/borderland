@@ -249,8 +249,10 @@ app.get('/test-pusher', async (req, res) => {
 // Add chat message endpoint
 app.post('/send-message', async (req, res) => {
     const { roomId, playerId, playerName, message } = req.body;
+    
+    console.log('Received chat message:', { roomId, playerId, playerName, message });
+    
     const room = rooms.get(roomId);
-
     if (!room) {
         return res.status(404).json({ error: 'Room not found' });
     }
@@ -267,6 +269,8 @@ app.post('/send-message', async (req, res) => {
             message,
             timestamp: new Date().toISOString()
         });
+        
+        console.log('Chat message sent successfully');
         res.json({ success: true });
     } catch (err) {
         console.error('Error sending chat message:', err);

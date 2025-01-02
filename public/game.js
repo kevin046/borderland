@@ -920,20 +920,38 @@ class DeathGame {
         this.gameStarted = true;
         this.gameId = data.gameId;
         
-        // Hide the waiting room screen
+        // Hide the waiting room screen and show game screen
         document.getElementById('login-screen').classList.remove('active');
         document.getElementById('game-screen').classList.add('active');
         
-        // Update UI elements
-        const startButton = document.getElementById('start-game');
-        if (startButton) {
-            startButton.style.display = 'none';
+        // Initialize the number grid
+        const numberGrid = document.querySelector('.number-grid');
+        if (numberGrid) {
+            numberGrid.innerHTML = '';
+            // Create buttons for numbers 0-100
+            for (let i = 0; i <= 100; i++) {
+                const button = document.createElement('button');
+                button.className = 'number-btn';
+                button.textContent = i;
+                button.dataset.number = i;
+                button.addEventListener('click', () => {
+                    // Remove selected class from all buttons
+                    document.querySelectorAll('.number-btn').forEach(btn => {
+                        btn.classList.remove('selected');
+                    });
+                    // Add selected class to clicked button
+                    button.classList.add('selected');
+                    this.selectedNumber = i;
+                    // Enable submit button
+                    const submitBtn = document.getElementById('submit-number');
+                    if (submitBtn) {
+                        submitBtn.disabled = false;
+                        submitBtn.classList.add('ready');
+                    }
+                });
+                numberGrid.appendChild(button);
+            }
         }
-
-        // Show game elements
-        document.querySelector('.game-board').style.display = 'block';
-        document.querySelector('.round-info').style.display = 'block';
-        document.querySelector('.timer').style.display = 'block';
 
         // Initialize round number
         const roundNumber = document.querySelector('.round-number');
@@ -941,15 +959,11 @@ class DeathGame {
             roundNumber.textContent = this.currentRound;
         }
 
-        // Start the round timer
-        this.startRoundTimer();
-
-        // Enable number buttons for selection
-        const numberBtns = document.querySelectorAll('.number-btn');
-        numberBtns.forEach(btn => {
-            btn.disabled = false;
-            btn.classList.remove('disabled');
-        });
+        // Initialize timer
+        const timeRemaining = document.querySelector('.time-remaining');
+        if (timeRemaining) {
+            timeRemaining.textContent = this.players.length === 5 ? '30' : '300';
+        }
 
         // Update status message
         const statusMessage = document.querySelector('.status-message');
@@ -957,8 +971,23 @@ class DeathGame {
             statusMessage.textContent = 'Game started! Choose your number...';
         }
 
+        // Clear previous results
+        const numbersList = document.querySelector('.numbers-list');
+        if (numbersList) {
+            numbersList.innerHTML = '';
+        }
+
+        // Reset average and target displays
+        const average = document.querySelector('.average');
+        const target = document.querySelector('.target');
+        if (average) average.textContent = '-';
+        if (target) target.textContent = '-';
+
+        // Start the round timer
+        this.startRoundTimer();
+
         // Play game start sound
-        this.playSound('gameStart');
+        this.playSound('buttonClick');
     }
 
     startRoundTimer() {
@@ -1202,7 +1231,27 @@ class DeathGame {
         const chatInput = document.getElementById('chat-input');
         const message = chatInput.value.trim();
 
-        if (!message || !this.roomId || !this.playerName) return;
+        if (!message) {
+            console.log('No message to send');
+            return;
+        }
+
+        if (!this.roomId || !this.playerId || !this.playerName) {
+            console.error('Missing required data:', {
+                roomId: this.roomId,
+                playerId: this.playerId,
+                playerName: this.playerName
+            });
+            alert('Please join a room first');
+            return;
+        }
+
+        console.log('Sending chat message:', {
+            roomId: this.roomId,
+            playerId: this.playerId,
+            playerName: this.playerName,
+            message: message
+        });
 
         fetch(`${this.serverUrl}/send-message`, {
             method: 'POST',
@@ -1218,11 +1267,14 @@ class DeathGame {
         })
         .then(response => {
             if (!response.ok) {
-                throw new Error(`HTTP error! status: ${response.status}`);
+                return response.text().then(text => {
+                    throw new Error(`HTTP error! status: ${response.status}, body: ${text}`);
+                });
             }
             return response.json();
         })
-        .then(() => {
+        .then(data => {
+            console.log('Message sent successfully:', data);
             chatInput.value = ''; // Clear input after successful send
         })
         .catch(error => {
