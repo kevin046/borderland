@@ -12,34 +12,28 @@ const pusher = new Pusher({
 
 const app = express();
 
-// Enable pre-flight requests for all routes
-app.options('*', cors());
+const allowedOrigins = [
+    'http://localhost:3000', 
+    'https://borderland-sigma.vercel.app',
+    'https://borderland-game.vercel.app',
+    'https://borderland-game-server.onrender.com'
+];
 
-// Enable CORS for all routes
-app.use((req, res, next) => {
-    const allowedOrigins = [
-        'http://localhost:3000', 
-        'https://borderland-sigma.vercel.app',
-        'https://borderland-game.vercel.app',
-        'https://borderland-game-server.onrender.com'
-    ];
-    const origin = req.headers.origin;
-    
-    if (allowedOrigins.includes(origin)) {
-        res.header('Access-Control-Allow-Origin', origin);
-        res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
-        res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept');
-        res.header('Access-Control-Allow-Credentials', 'true');
-    }
-
-    // Handle preflight requests
-    if (req.method === 'OPTIONS') {
-        res.sendStatus(200);
-        return;
-    }
-
-    next();
-});
+// Configure CORS
+app.use(cors({
+    origin: function(origin, callback) {
+        // Allow requests with no origin (like mobile apps or curl requests)
+        if (!origin) return callback(null, true);
+        if (allowedOrigins.indexOf(origin) === -1) {
+            var msg = 'The CORS policy for this site does not allow access from the specified Origin.';
+            return callback(new Error(msg), false);
+        }
+        return callback(null, true);
+    },
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Origin', 'X-Requested-With', 'Content-Type', 'Accept', 'Authorization'],
+    credentials: true
+}));
 
 // Parse JSON bodies
 app.use(express.json());
