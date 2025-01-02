@@ -817,6 +817,16 @@ body {
     z-index: 1000;
 }
 
+.chat-box.minimized {
+    height: 60px;
+    border-radius: 16px;
+}
+
+.chat-box.minimized .chat-messages,
+.chat-box.minimized .chat-input-area {
+    display: none;
+}
+
 .chat-header {
     padding: 16px;
     background: rgba(255, 255, 255, 0.05);
@@ -825,6 +835,12 @@ body {
     display: flex;
     align-items: center;
     justify-content: space-between;
+    cursor: pointer;
+}
+
+.chat-box.minimized .chat-header {
+    border-radius: 16px;
+    border-bottom: none;
 }
 
 .chat-header h3 {
@@ -837,9 +853,25 @@ body {
     gap: 8px;
 }
 
-.chat-header h3::before {
-    content: '💬';
+.minimize-btn {
+    background: none;
+    border: none;
+    color: rgba(255, 255, 255, 0.7);
+    cursor: pointer;
     font-size: 1.2em;
+    padding: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.3s ease;
+}
+
+.minimize-btn:hover {
+    color: white;
+}
+
+.chat-box.minimized .minimize-btn {
+    transform: rotate(180deg);
 }
 
 .chat-messages {

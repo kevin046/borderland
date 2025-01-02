@@ -75,6 +75,26 @@ class DeathGame {
                 }
             });
         }
+
+        // Add chat minimize functionality
+        const chatHeaders = document.querySelectorAll('.chat-header');
+        chatHeaders.forEach(header => {
+            // Add minimize button to header
+            const minimizeBtn = document.createElement('button');
+            minimizeBtn.className = 'minimize-btn';
+            minimizeBtn.innerHTML = '−';
+            header.appendChild(minimizeBtn);
+
+            header.addEventListener('click', (e) => {
+                if (e.target === minimizeBtn || e.target === header) {
+                    const chatBox = header.closest('.chat-box');
+                    if (chatBox) {
+                        chatBox.classList.toggle('minimized');
+                        minimizeBtn.innerHTML = chatBox.classList.contains('minimized') ? '+' : '−';
+                    }
+                }
+            });
+        });
     }
 
     createRoom() {
@@ -921,9 +941,16 @@ class DeathGame {
         this.gameId = data.gameId;
         this.players = data.players; // Store players data
         
-        // Hide the waiting room screen and show game screen
-        document.getElementById('login-screen').classList.remove('active');
-        document.getElementById('game-screen').classList.add('active');
+        // Hide all screens first
+        document.querySelectorAll('.screen').forEach(screen => {
+            screen.classList.remove('active');
+        });
+
+        // Show game screen
+        const gameScreen = document.getElementById('game-screen');
+        if (gameScreen) {
+            gameScreen.classList.add('active');
+        }
 
         // Initialize player cards
         const playersGrid = document.createElement('div');
@@ -947,35 +974,45 @@ class DeathGame {
             `;
             playersGrid.appendChild(playerCard);
         });
-        document.querySelector('.game-board').insertBefore(playersGrid, document.querySelector('.number-grid'));
-        
-        // Initialize the number grid
-        const numberGrid = document.querySelector('.number-grid');
-        if (numberGrid) {
-            numberGrid.innerHTML = '';
-            // Create buttons for numbers 0-100
+
+        // Clear and update game board
+        const gameBoard = document.querySelector('.game-board');
+        if (gameBoard) {
+            gameBoard.innerHTML = ''; // Clear existing content
+            gameBoard.appendChild(playersGrid);
+
+            // Add number grid
+            const numberGridContainer = document.createElement('div');
+            numberGridContainer.className = 'number-grid';
             for (let i = 0; i <= 100; i++) {
                 const button = document.createElement('button');
                 button.className = 'number-btn';
                 button.textContent = i;
                 button.dataset.number = i;
                 button.addEventListener('click', () => {
-                    // Remove selected class from all buttons
                     document.querySelectorAll('.number-btn').forEach(btn => {
                         btn.classList.remove('selected');
                     });
-                    // Add selected class to clicked button
                     button.classList.add('selected');
                     this.selectedNumber = i;
-                    // Enable submit button
                     const submitBtn = document.getElementById('submit-number');
                     if (submitBtn) {
                         submitBtn.disabled = false;
                         submitBtn.classList.add('ready');
                     }
                 });
-                numberGrid.appendChild(button);
+                numberGridContainer.appendChild(button);
             }
+            gameBoard.appendChild(numberGridContainer);
+
+            // Add submit button
+            const submitButton = document.createElement('button');
+            submitButton.id = 'submit-number';
+            submitButton.className = 'submit-btn';
+            submitButton.disabled = true;
+            submitButton.textContent = 'Submit Number';
+            submitButton.addEventListener('click', () => this.submitNumber());
+            gameBoard.appendChild(submitButton);
         }
 
         // Initialize round number
@@ -1332,6 +1369,16 @@ class DeathGame {
 
         // Play message sound
         this.playSound('message');
+
+        // Unminimize chat box when new message arrives
+        const chatBox = chatMessages.closest('.chat-box');
+        if (chatBox && chatBox.classList.contains('minimized')) {
+            chatBox.classList.remove('minimized');
+            const minimizeBtn = chatBox.querySelector('.minimize-btn');
+            if (minimizeBtn) {
+                minimizeBtn.innerHTML = '−';
+            }
+        }
     }
 }
 
