@@ -205,6 +205,13 @@ class DeathGame {
         // Clear existing game state
         this.clearGameState();
 
+        // Show loading state
+        const roomScreen = document.getElementById('room-screen');
+        if (roomScreen) {
+            roomScreen.style.opacity = '0.5';
+            roomScreen.style.pointerEvents = 'none';
+        }
+
         this.fetchWithCORS(`${this.serverUrl}/join-room`, {
             method: 'POST',
             body: JSON.stringify({ roomId })
@@ -225,11 +232,10 @@ class DeathGame {
                 this.subscribeToRoom(this.roomId);
             }
 
-            // Show login screen
-            document.querySelectorAll('.screen').forEach(screen => {
-                screen.style.display = 'none';
-            });
-            document.getElementById('login-screen').style.display = 'block';
+            // Explicitly hide room screen and show login screen
+            document.getElementById('room-screen').style.display = 'none';
+            const loginScreen = document.getElementById('login-screen');
+            loginScreen.style.display = 'block';
 
             // Reset player spots
             const joinBtns = document.querySelectorAll('.join-btn');
@@ -254,6 +260,7 @@ class DeathGame {
                             <span class="status-icon">${player.isBot ? '🤖' : '👤'}</span>
                             <span class="player-name">${player.name}</span>
                             <span class="spot-number">#${index + 1}</span>
+                            ${player.isBot ? '<button class="kick-bot-btn" onclick="event.stopPropagation(); window.game.kickBot(' + index + ')">❌</button>' : ''}
                         `;
                         joinBtn.classList.add('occupied');
                         if (botBtns[index]) {
@@ -262,28 +269,15 @@ class DeathGame {
                     }
                 });
 
-                // Update players count
+                // Update players count and start button
                 const playersReadyElement = document.getElementById('players-ready');
                 if (playersReadyElement) {
                     playersReadyElement.textContent = data.players.length;
                 }
 
-                // Update start button
                 const startButton = document.getElementById('start-game');
                 if (startButton) {
                     startButton.disabled = data.players.length !== this.maxPlayers;
-                }
-            } else {
-                // Reset players count if no players
-                const playersReadyElement = document.getElementById('players-ready');
-                if (playersReadyElement) {
-                    playersReadyElement.textContent = '0';
-                }
-
-                // Reset start button
-                const startButton = document.getElementById('start-game');
-                if (startButton) {
-                    startButton.disabled = true;
                 }
             }
 
@@ -296,6 +290,11 @@ class DeathGame {
         })
         .finally(() => {
             this.joiningRoom = false;
+            // Reset loading state
+            if (roomScreen) {
+                roomScreen.style.opacity = '1';
+                roomScreen.style.pointerEvents = 'auto';
+            }
         });
     }
 
