@@ -1338,11 +1338,31 @@ class DeathGame {
                     // Update points only if player is not eliminated
                     const pointsValue = playerCard.querySelector('.points-value');
                     if (pointsValue && !playerCard.classList.contains('eliminated')) {
-                        // Winner keeps their points, losers lose 1 point
+                        // Winner keeps points, losers lose 1 point
                         const newPoints = result.isWinner ? result.totalPoints : result.totalPoints - 1;
                         pointsValue.textContent = newPoints;
                         pointsValue.className = `points-value ${newPoints < 0 ? 'negative' : 'positive'}`;
                     }
+
+                    // Update player card with round details
+                    const roundDetails = document.createElement('div');
+                    roundDetails.className = 'round-details';
+                    roundDetails.innerHTML = `
+                        <div class="round-detail-item">
+                            <span class="detail-label">Number:</span>
+                            <span class="detail-value">${result.number}</span>
+                        </div>
+                        <div class="round-detail-item">
+                            <span class="detail-label">Distance:</span>
+                            <span class="detail-value">${result.distance.toFixed(2)}</span>
+                        </div>
+                        <div class="round-detail-item">
+                            <span class="detail-label">Result:</span>
+                            <span class="detail-value ${result.isWinner ? 'winner' : 'negative'}">
+                                ${result.isWinner ? 'Winner!' : '-1 point'}
+                            </span>
+                        </div>
+                    `;
 
                     // Update status
                     const statusDiv = playerCard.querySelector('.player-status');
@@ -1372,6 +1392,18 @@ class DeathGame {
                             statusDiv.textContent = 'Ready';
                             statusDiv.className = 'player-status';
                         }
+                    }
+
+                    // Remove any existing round details
+                    const existingDetails = playerCard.querySelector('.round-details');
+                    if (existingDetails) {
+                        existingDetails.remove();
+                    }
+
+                    // Add new round details after player-stats
+                    const playerStats = playerCard.querySelector('.player-stats');
+                    if (playerStats) {
+                        playerStats.after(roundDetails);
                     }
                 }
 

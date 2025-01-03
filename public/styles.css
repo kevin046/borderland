@@ -1239,4 +1239,130 @@ body {
     background: #ffebee;
     color: #d32f2f;
     font-weight: 600;
+}
+
+.round-details {
+    margin-top: 12px;
+    padding: 12px;
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 8px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.round-detail-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 4px 8px;
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 4px;
+}
+
+.round-detail-item .detail-label {
+    font-size: 0.85em;
+    color: rgba(255, 255, 255, 0.7);
+}
+
+.round-detail-item .detail-value {
+    font-family: 'Roboto Mono', monospace;
+    font-weight: 600;
+}
+
+.round-detail-item .detail-value.winner {
+    color: #4caf50;
+}
+
+.round-detail-item .detail-value.negative {
+    color: #f44336;
+}
+
+.player-card {
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 12px;
+    padding: 16px;
+    transition: all 0.3s ease;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.player-card.winner {
+    background: rgba(76, 175, 80, 0.1);
+    border-color: rgba(76, 175, 80, 0.3);
+}
+
+.player-card.eliminated {
+    background: rgba(244, 67, 54, 0.1);
+    border-color: rgba(244, 67, 54, 0.3);
+    opacity: 0.8;
+}
+
+.player-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 8px;
+}
+
+.player-icon {
+    font-size: 1.4em;
+}
+
+.player-name {
+    font-size: 1.1em;
+    font-weight: 600;
+    color: white;
+}
+
+.player-stats {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px;
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 8px;
+}
+
+.player-points {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.points-label {
+    color: rgba(255, 255, 255, 0.7);
+    font-size: 0.9em;
+}
+
+.points-value {
+    font-weight: 600;
+    font-family: 'Roboto Mono', monospace;
+}
+
+.points-value.positive {
+    color: #4caf50;
+}
+
+.points-value.negative {
+    color: #f44336;
+}
+
+.player-status {
+    padding: 4px 12px;
+    border-radius: 12px;
+    font-size: 0.9em;
+    font-weight: 500;
+}
+
+.player-status.winner {
+    background: rgba(76, 175, 80, 0.2);
+    color: #4caf50;
+}
+
+.player-status.eliminated {
+    background: rgba(244, 67, 54, 0.2);
+    color: #f44336;
 } 
