@@ -445,18 +445,20 @@ class DeathGame {
             body: JSON.stringify({
                 roomId: this.roomId,
                 playerName: name,
-                spotIndex: this.selectedSpot
+                spotIndex: this.selectedSpot,
+                isBot: false
             })
         })
         .then(response => response.json())
         .then(data => {
             console.log('Join successful:', data);
             this.playerId = data.playerId;
+            this.currentPlayer = this.selectedSpot;
             if (data.gameId) {
                 this.gameId = data.gameId;
             }
-            this.addPlayer(this.selectedSpot, name);
             this.hideNameModal();
+            this.playSound('buttonClick');
         })
         .catch(error => {
             console.error('Detailed error joining game:', error);
@@ -803,7 +805,8 @@ class DeathGame {
 
         // If user already has a spot, handle spot change
         if (this.currentPlayer !== null) {
-            const currentPlayerData = this.players.find(p => p.index === this.currentPlayer);
+            // Only allow changing their own spot
+            const currentPlayerData = this.players.find(p => p.id === this.playerId);
             if (currentPlayerData) {
                 console.log('Changing spot from', this.currentPlayer, 'to', spotIndex);
                 
@@ -832,6 +835,7 @@ class DeathGame {
                 .then(data => {
                     console.log('Spot change successful:', data);
                     this.playerId = data.playerId;
+                    this.currentPlayer = spotIndex;
                     if (data.gameId) {
                         this.gameId = data.gameId;
                     }
@@ -983,12 +987,18 @@ class DeathGame {
             const index = player.spotIndex;
             if (joinBtns[index]) {
                 const joinBtn = joinBtns[index];
+                const isCurrentPlayer = player.id === this.playerId;
+                
                 joinBtn.innerHTML = `
                     <span class="status-icon">${player.isBot ? '🤖' : '👤'}</span>
                     <span class="player-name">${player.name}</span>
                     <span class="spot-number">#${index + 1}</span>
+                    ${isCurrentPlayer ? '<button class="change-spot-btn">Change Spot</button>' : ''}
                 `;
                 joinBtn.classList.add('occupied');
+                if (isCurrentPlayer) {
+                    joinBtn.classList.add('current-player');
+                }
 
                 // Hide bot button for occupied spot
                 if (botBtns[index]) {
@@ -999,20 +1009,21 @@ class DeathGame {
 
         // Update player count and start button
         const playersReadyElement = document.getElementById('players-ready');
-        const startGameButton = document.getElementById('start-game');
+        const startButton = document.getElementById('start-game');
         
         if (playersReadyElement) {
             playersReadyElement.textContent = players.length;
         }
         
-        if (startGameButton) {
-            startGameButton.disabled = players.length !== this.maxPlayers;
+        if (startButton) {
+            startButton.disabled = players.length !== this.maxPlayers;
         }
 
         // Store the current players
         this.players = players.map(p => ({
-            index: p.spotIndex,
+            id: p.id,
             name: p.name,
+            spotIndex: p.spotIndex,
             isBot: p.isBot
         }));
     }
