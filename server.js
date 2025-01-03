@@ -217,19 +217,36 @@ async function calculateRoundResults(game) {
     const results = game.players.map(player => {
         const number = game.submissions.get(player.id);
         const distance = Math.abs(number - target);
-        return { player, number, distance };
+        return { 
+            player, 
+            number, 
+            distance,
+            isWinner: false,
+            points: 0,
+            totalPoints: player.points
+        };
     });
 
     // Sort by distance (closest first)
     results.sort((a, b) => a.distance - b.distance);
 
-    // Update points
-    results.forEach((result, index) => {
-        const player = game.players.find(p => p.id === result.player.id);
-        if (player) {
-            player.points += (game.players.length - index);
-        }
+    // Find the winner (closest to target)
+    const winner = results[0];
+    winner.isWinner = true;
+    winner.points = game.players.length - 1;
+    winner.player.points += winner.points;
+    winner.totalPoints = winner.player.points;
+    
+    // Update points and status for other players
+    results.slice(1).forEach(result => {
+        result.points = -1;
+        result.player.points -= 1;
+        result.totalPoints = result.player.points;
+        result.isAlive = result.player.points > -10;
     });
+
+    // Set winner's alive status
+    winner.isAlive = winner.player.points > -10;
 
     game.roundResults.push({
         round: game.round,
@@ -252,7 +269,11 @@ async function calculateRoundResults(game) {
                 playerName: r.player.name,
                 number: r.number,
                 distance: r.distance,
-                points: r.player.points
+                points: r.points,
+                totalPoints: r.totalPoints,
+                isWinner: r.isWinner,
+                isAlive: r.isAlive,
+                isBot: r.player.isBot
             }))
         });
         console.log('Round results sent successfully');
