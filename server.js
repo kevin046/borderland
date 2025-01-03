@@ -280,20 +280,20 @@ app.post('/submit-number', async (req, res) => {
 async function calculateRoundResults(game) {
     const numbers = Array.from(game.submissions.values());
     const average = numbers.reduce((a, b) => a + b, 0) / numbers.length;
-    const target = average * 0.8;
+        const target = average * 0.8;
 
     const results = game.players.map(player => {
         const number = game.submissions.get(player.id);
-        const distance = Math.abs(number - target);
-        return { 
+                const distance = Math.abs(number - target);
+                return {
             player, 
             number, 
             distance,
-            isWinner: false,
+                    isWinner: false,
             points: 0,
             totalPoints: player.points
-        };
-    });
+                };
+            });
 
     // Sort by distance (closest first)
     results.sort((a, b) => a.distance - b.distance);
@@ -301,17 +301,15 @@ async function calculateRoundResults(game) {
     // Find the winner (closest to target)
     const winner = results[0];
     winner.isWinner = true;
-    winner.points = game.players.length - 1; // Winner gets points equal to number of players minus themselves
-    winner.player.points += winner.points; // Add points to player's total
+    winner.points = game.players.length - 1;
+    winner.player.points += winner.points;
     winner.totalPoints = winner.player.points;
     
     // Update points and status for other players
     results.slice(1).forEach(result => {
-        if (result.player.points > -10) { // Only deduct points if player is not already eliminated
-            result.points = -1;
-            result.player.points -= 1;
-            result.totalPoints = result.player.points;
-        }
+        result.points = -1;
+        result.player.points -= 1;
+        result.totalPoints = result.player.points;
         result.isAlive = result.player.points > -10;
     });
 

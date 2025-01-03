@@ -445,20 +445,18 @@ class DeathGame {
             body: JSON.stringify({
                 roomId: this.roomId,
                 playerName: name,
-                spotIndex: this.selectedSpot,
-                isBot: false
+                spotIndex: this.selectedSpot
             })
         })
         .then(response => response.json())
         .then(data => {
             console.log('Join successful:', data);
             this.playerId = data.playerId;
-            this.currentPlayer = this.selectedSpot;
             if (data.gameId) {
                 this.gameId = data.gameId;
             }
+            this.addPlayer(this.selectedSpot, name);
             this.hideNameModal();
-            this.playSound('buttonClick');
         })
         .catch(error => {
             console.error('Detailed error joining game:', error);
@@ -805,8 +803,7 @@ class DeathGame {
 
         // If user already has a spot, handle spot change
         if (this.currentPlayer !== null) {
-            // Only allow changing their own spot
-            const currentPlayerData = this.players.find(p => p.id === this.playerId);
+            const currentPlayerData = this.players.find(p => p.index === this.currentPlayer);
             if (currentPlayerData) {
                 console.log('Changing spot from', this.currentPlayer, 'to', spotIndex);
                 
@@ -835,7 +832,6 @@ class DeathGame {
                 .then(data => {
                     console.log('Spot change successful:', data);
                     this.playerId = data.playerId;
-                    this.currentPlayer = spotIndex;
                     if (data.gameId) {
                         this.gameId = data.gameId;
                     }
@@ -987,18 +983,12 @@ class DeathGame {
             const index = player.spotIndex;
             if (joinBtns[index]) {
                 const joinBtn = joinBtns[index];
-                const isCurrentPlayer = player.id === this.playerId;
-                
                 joinBtn.innerHTML = `
                     <span class="status-icon">${player.isBot ? '🤖' : '👤'}</span>
                     <span class="player-name">${player.name}</span>
                     <span class="spot-number">#${index + 1}</span>
-                    ${isCurrentPlayer ? '<button class="change-spot-btn">Change Spot</button>' : ''}
                 `;
                 joinBtn.classList.add('occupied');
-                if (isCurrentPlayer) {
-                    joinBtn.classList.add('current-player');
-                }
 
                 // Hide bot button for occupied spot
                 if (botBtns[index]) {
@@ -1009,21 +999,20 @@ class DeathGame {
 
         // Update player count and start button
         const playersReadyElement = document.getElementById('players-ready');
-        const startButton = document.getElementById('start-game');
+        const startGameButton = document.getElementById('start-game');
         
         if (playersReadyElement) {
             playersReadyElement.textContent = players.length;
         }
         
-        if (startButton) {
-            startButton.disabled = players.length !== this.maxPlayers;
+        if (startGameButton) {
+            startGameButton.disabled = players.length !== this.maxPlayers;
         }
 
         // Store the current players
         this.players = players.map(p => ({
-            id: p.id,
+            index: p.spotIndex,
             name: p.name,
-            spotIndex: p.spotIndex,
             isBot: p.isBot
         }));
     }
@@ -1274,13 +1263,21 @@ class DeathGame {
             }
         }
 
-        // Update game results display
+        // Update game results display with modern styling
         gameResultsContainer.innerHTML = `
             <div class="round-info">
-                <h3>Round ${this.currentRound} Results</h3>
-                <div class="result-numbers">
-                    <div class="average">Average: ${data.average.toFixed(2)}</div>
-                    <div class="target">Target (80%): ${data.target.toFixed(2)}</div>
+                <div class="round-header">
+                    <h2>Round ${this.currentRound}</h2>
+                    <div class="round-numbers">
+                        <div class="stat-box">
+                            <div class="stat-label">Average</div>
+                            <div class="stat-value">${data.average.toFixed(2)}</div>
+                        </div>
+                        <div class="stat-box highlight">
+                            <div class="stat-label">Target (80%)</div>
+                            <div class="stat-value">${data.target.toFixed(2)}</div>
+                        </div>
+                    </div>
                 </div>
             </div>
             <div class="rules-container">
@@ -1315,8 +1312,10 @@ class DeathGame {
                     // Update points only if player is not eliminated
                     const pointsValue = playerCard.querySelector('.points-value');
                     if (pointsValue && !playerCard.classList.contains('eliminated')) {
-                        pointsValue.textContent = result.totalPoints;
-                        pointsValue.className = `points-value ${result.totalPoints < 0 ? 'negative' : 'positive'}`;
+                        // Winner keeps their points, losers lose 1 point
+                        const newPoints = result.isWinner ? result.totalPoints : result.totalPoints - 1;
+                        pointsValue.textContent = newPoints;
+                        pointsValue.className = `points-value ${newPoints < 0 ? 'negative' : 'positive'}`;
                     }
 
                     // Update status
@@ -1350,23 +1349,37 @@ class DeathGame {
                     }
                 }
 
-                // Add submission entry only for non-eliminated players or newly eliminated players
+                // Add submission entry with modern styling
                 if (numbersList && (!playerCard?.classList.contains('eliminated') || !result.isAlive)) {
                     const submissionEntry = document.createElement('div');
                     submissionEntry.className = `submission-entry ${result.isWinner ? 'winner' : ''} ${!result.isAlive ? 'eliminated' : ''} ${result.invalid ? 'invalid' : ''}`;
                     
                     submissionEntry.innerHTML = `
-                        <div class="player-info">
-                            <span class="player-icon">${result.isBot ? '🤖' : '👤'}</span>
-                            <span class="player-name">${result.playerName}</span>
-                        </div>
-                        <div class="submission-details">
-                            <span class="number-submitted">Number: ${result.number}</span>
-                            <span class="distance">Distance: ${result.distance.toFixed(2)}</span>
-                            ${!playerCard?.classList.contains('eliminated') ? 
-                                `<span class="points ${result.points < 0 ? 'negative' : 'positive'}">${result.isWinner ? '+' : ''}${result.points} points</span>` : 
-                                '<span class="points eliminated">No points (eliminated)</span>'
-                            }
+                        <div class="submission-content">
+                            <div class="player-info">
+                                <span class="player-icon">${result.isBot ? '🤖' : '👤'}</span>
+                                <span class="player-name">${result.playerName}</span>
+                            </div>
+                            <div class="submission-details">
+                                <div class="detail-item">
+                                    <span class="detail-label">Number:</span>
+                                    <span class="detail-value">${result.number}</span>
+                                </div>
+                                <div class="detail-item">
+                                    <span class="detail-label">Distance:</span>
+                                    <span class="detail-value">${result.distance.toFixed(2)}</span>
+                                </div>
+                                <div class="detail-item">
+                                    <span class="detail-label">Total Points:</span>
+                                    <span class="detail-value ${result.totalPoints < 0 ? 'negative' : 'positive'}">${result.totalPoints}</span>
+                                </div>
+                                <div class="detail-item">
+                                    <span class="detail-label">Round Result:</span>
+                                    <span class="detail-value ${result.isWinner ? 'winner' : 'negative'}">
+                                        ${result.isWinner ? 'Winner!' : '-1 point'}
+                                    </span>
+                                </div>
+                            </div>
                         </div>
                         <div class="status-badges">
                             ${result.isWinner ? '<span class="winner-badge">👑 Winner</span>' : ''}
@@ -1394,8 +1407,10 @@ class DeathGame {
         if (statusMessage) {
             if (currentPlayerResult && !currentPlayerResult.isAlive) {
                 statusMessage.textContent = 'You have been eliminated from the game!';
+                statusMessage.className = 'status-message eliminated';
             } else {
                 statusMessage.textContent = 'Next round starting in 10 seconds...';
+                statusMessage.className = 'status-message';
             }
         }
 
