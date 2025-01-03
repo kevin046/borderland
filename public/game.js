@@ -508,6 +508,13 @@ class DeathGame {
     }
 
     submitNumber() {
+        // Check if player is eliminated
+        const playerCard = document.querySelector(`.player-card[data-player-id="${this.playerId}"]`);
+        if (playerCard && playerCard.classList.contains('eliminated')) {
+            console.log('Player is eliminated and cannot submit numbers');
+            return;
+        }
+
         if (typeof this.selectedNumber === 'undefined') {
             alert('Please select a number');
             return;
@@ -540,22 +547,28 @@ class DeathGame {
                     return null;
                 }
 
-                // After successful human submission, submit bot numbers
-                const botPlayers = this.players.filter(p => p.isBot);
+                // After successful human submission, submit bot numbers for non-eliminated bots only
+                const botPlayers = this.players.filter(p => {
+                    const botCard = document.querySelector(`.player-card[data-player-id="${p.id}"]`);
+                    return p.isBot && botCard && !botCard.classList.contains('eliminated');
+                });
+
                 if (botPlayers.length > 0) {
-                    console.log('Submitting bot numbers:', botPlayers);
+                    console.log('Submitting bot numbers for active bots:', botPlayers);
                     
-                    // Submit all bot numbers simultaneously
-                    const botPromises = botPlayers.map(bot => 
-                        this.submitNumberToServer(this.roomId, this.gameId, bot.id, -1)
+                    // Submit all active bot numbers simultaneously
+                    const botPromises = botPlayers.map(bot => {
+                        // Generate a random number between 0 and 100 for bots
+                        const botNumber = Math.floor(Math.random() * 101);
+                        return this.submitNumberToServer(this.roomId, this.gameId, bot.id, botNumber)
                             .then(botData => {
                                 console.log(`Bot ${bot.name} submission response:`, botData);
                                 if (botData.alreadySubmitted) {
                                     console.log(`Bot ${bot.name} had already submitted`);
                                 }
                                 return botData;
-                            })
-                    );
+                            });
+                    });
 
                     return Promise.all(botPromises).then(results => {
                         // Check if any submission indicates all players have submitted
@@ -579,11 +592,13 @@ class DeathGame {
             .catch(error => {
                 console.error('Error in number submission:', error);
                 
-                // Re-enable buttons on error
-                if (submitButton) {
-                    submitButton.disabled = false;
+                // Re-enable buttons on error if player is not eliminated
+                if (!playerCard || !playerCard.classList.contains('eliminated')) {
+                    if (submitButton) {
+                        submitButton.disabled = false;
+                    }
+                    numberBtns.forEach(btn => btn.disabled = false);
                 }
-                numberBtns.forEach(btn => btn.disabled = false);
                 
                 // Update status message
                 const statusMessage = document.querySelector('.status-message');
@@ -1238,28 +1253,43 @@ class DeathGame {
             clearInterval(this.timer);
         }
 
+        // Create or update game results container
+        let gameResultsContainer = document.querySelector('.game-results-container');
+        if (!gameResultsContainer) {
+            gameResultsContainer = document.createElement('div');
+            gameResultsContainer.className = 'game-results-container';
+            const gameBoard = document.querySelector('.game-board');
+            if (gameBoard) {
+                gameBoard.insertBefore(gameResultsContainer, gameBoard.firstChild);
+            }
+        }
+
+        // Update game results display
+        gameResultsContainer.innerHTML = `
+            <div class="round-info">
+                <h3>Round ${this.currentRound} Results</h3>
+                <div class="result-numbers">
+                    <div class="average">Average: ${data.average.toFixed(2)}</div>
+                    <div class="target">Target (80%): ${data.target.toFixed(2)}</div>
+                </div>
+            </div>
+            <div class="rules-container">
+                <h3>Game Rules</h3>
+                <div class="rules-list"></div>
+            </div>
+        `;
+
         // Update rules based on remaining players
         const alivePlayers = data.results.filter(r => r.isAlive).length;
         this.updateRules(alivePlayers);
 
         // Update round number and results display
         const roundNumber = document.querySelector('.round-number');
-        const averageDisplay = document.querySelector('.average');
-        const targetDisplay = document.querySelector('.target');
         const numbersList = document.querySelector('.numbers-list');
 
         // Clear previous submissions
         if (numbersList) {
             numbersList.innerHTML = '';
-        }
-
-        // Update average and target values immediately
-        if (averageDisplay && typeof data.average === 'number') {
-            averageDisplay.textContent = data.average.toFixed(2);
-        }
-
-        if (targetDisplay && typeof data.target === 'number') {
-            targetDisplay.textContent = data.target.toFixed(2);
         }
 
         // Sort and display results
@@ -1272,11 +1302,11 @@ class DeathGame {
                 // Update player card
                 const playerCard = document.querySelector(`.player-card[data-player-id="${result.playerId}"]`);
                 if (playerCard) {
-                    // Update points
+                    // Update points only if player is not eliminated
                     const pointsValue = playerCard.querySelector('.points-value');
-                    if (pointsValue) {
+                    if (pointsValue && !playerCard.classList.contains('eliminated')) {
                         pointsValue.textContent = result.totalPoints;
-                        pointsValue.className = `points-value ${result.totalPoints < 0 ? 'negative' : ''}`;
+                        pointsValue.className = `points-value ${result.totalPoints < 0 ? 'negative' : 'positive'}`;
                     }
 
                     // Update status
@@ -1286,6 +1316,20 @@ class DeathGame {
                             statusDiv.textContent = 'Eliminated';
                             statusDiv.className = 'player-status eliminated';
                             playerCard.classList.add('eliminated');
+                            
+                            // Disable number buttons if current player is eliminated
+                            if (result.playerId === this.playerId) {
+                                const numberBtns = document.querySelectorAll('.number-btn');
+                                const submitBtn = document.getElementById('submit-number');
+                                numberBtns.forEach(btn => {
+                                    btn.disabled = true;
+                                    btn.classList.add('disabled');
+                                });
+                                if (submitBtn) {
+                                    submitBtn.disabled = true;
+                                    submitBtn.classList.add('disabled');
+                                }
+                            }
                         } else if (result.isWinner) {
                             statusDiv.textContent = 'Winner!';
                             statusDiv.className = 'player-status winner';
@@ -1296,8 +1340,8 @@ class DeathGame {
                     }
                 }
 
-                // Add submission entry
-                if (numbersList) {
+                // Add submission entry only for non-eliminated players or newly eliminated players
+                if (numbersList && (!playerCard?.classList.contains('eliminated') || !result.isAlive)) {
                     const submissionEntry = document.createElement('div');
                     submissionEntry.className = `submission-entry ${result.isWinner ? 'winner' : ''} ${!result.isAlive ? 'eliminated' : ''} ${result.invalid ? 'invalid' : ''}`;
                     
@@ -1309,7 +1353,10 @@ class DeathGame {
                         <div class="submission-details">
                             <span class="number-submitted">Number: ${result.number}</span>
                             <span class="distance">Distance: ${result.distance.toFixed(2)}</span>
-                            <span class="points ${result.points < 0 ? 'negative' : ''}">Points: ${result.points > 0 ? '+' : ''}${result.points}</span>
+                            ${!playerCard?.classList.contains('eliminated') ? 
+                                `<span class="points ${result.points < 0 ? 'negative' : 'positive'}">${result.isWinner ? '+' : ''}${result.points} points</span>` : 
+                                '<span class="points eliminated">No points (eliminated)</span>'
+                            }
                         </div>
                         <div class="status-badges">
                             ${result.isWinner ? '<span class="winner-badge">👑 Winner</span>' : ''}
@@ -1330,16 +1377,16 @@ class DeathGame {
             }
         }
 
-        // Clear bot messages
-        const botMessages = document.querySelector('.bot-messages');
-        if (botMessages) {
-            botMessages.innerHTML = '';
-        }
-
-        // Start 10-second cooldown
+        // Start 10-second cooldown for non-eliminated players
         const statusMessage = document.querySelector('.status-message');
+        const currentPlayerResult = data.results.find(r => r.playerId === this.playerId);
+        
         if (statusMessage) {
-            statusMessage.textContent = 'Next round starting in 10 seconds...';
+            if (currentPlayerResult && !currentPlayerResult.isAlive) {
+                statusMessage.textContent = 'You have been eliminated from the game!';
+            } else {
+                statusMessage.textContent = 'Next round starting in 10 seconds...';
+            }
         }
 
         // Disable all buttons during cooldown
@@ -1354,18 +1401,17 @@ class DeathGame {
             submitBtn.classList.remove('ready');
         }
 
-        // Create countdown display
-        let countdown = 10;
-        const countdownInterval = setInterval(() => {
-            countdown--;
-            if (statusMessage) {
-                statusMessage.textContent = `Next round starting in ${countdown} seconds...`;
-            }
-            
-            if (countdown <= 0) {
-                clearInterval(countdownInterval);
-                const currentPlayerResult = data.results.find(r => r.playerId === this.playerId);
-                if (currentPlayerResult && currentPlayerResult.isAlive) {
+        // Create countdown display only if player is not eliminated
+        if (currentPlayerResult && currentPlayerResult.isAlive) {
+            let countdown = 10;
+            const countdownInterval = setInterval(() => {
+                countdown--;
+                if (statusMessage) {
+                    statusMessage.textContent = `Next round starting in ${countdown} seconds...`;
+                }
+                
+                if (countdown <= 0) {
+                    clearInterval(countdownInterval);
                     // Increment round number
                     this.currentRound++;
                     if (roundNumber) {
@@ -1377,6 +1423,10 @@ class DeathGame {
                         btn.disabled = false;
                         btn.classList.remove('disabled');
                     });
+                    if (submitBtn) {
+                        submitBtn.disabled = true;
+                        submitBtn.classList.remove('disabled');
+                    }
 
                     // Update status message
                     if (statusMessage) {
@@ -1386,8 +1436,8 @@ class DeathGame {
                     // Start new round timer
                     this.startRoundTimer();
                 }
-            }
-        }, 1000);
+            }, 1000);
+        }
     }
 
     startGame() {

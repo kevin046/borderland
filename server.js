@@ -10,8 +10,8 @@ const corsOptions = {
     origin: ['https://borderland-sigma.vercel.app', 'http://localhost:3000'],
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type'],
-    credentials: false,
-    optionsSuccessStatus: 200
+    credentials: true,
+    optionsSuccessStatus: 204
 };
 
 // Apply CORS middleware before any routes
@@ -20,18 +20,9 @@ app.use(cors(corsOptions));
 // Parse JSON bodies
 app.use(express.json());
 
-// Add CORS headers to all responses
-app.use((req, res, next) => {
-    res.header('Access-Control-Allow-Origin', 'https://borderland-sigma.vercel.app');
-    res.header('Access-Control-Allow-Methods', 'GET,POST,OPTIONS');
-    res.header('Access-Control-Allow-Headers', 'Content-Type');
-    next();
-});
-
 // Error handling middleware
 app.use((err, req, res, next) => {
     console.error('Error:', err);
-    res.header('Access-Control-Allow-Origin', 'https://borderland-sigma.vercel.app');
     res.status(500).json({ error: 'Internal server error' });
 });
 
