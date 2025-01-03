@@ -117,7 +117,7 @@ app.post('/join', async (req, res) => {
     const { roomId, playerName, spotIndex, isBot = false } = req.body;
     const room = rooms.get(roomId);
 
-    if (!room) {
+        if (!room) {
         return res.status(404).json({ error: 'Room not found' });
     }
 
@@ -126,9 +126,9 @@ app.post('/join', async (req, res) => {
     }
 
     const playerId = `player_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-    const player = {
-        id: playerId,
-        name: playerName,
+        const player = {
+            id: playerId,
+            name: playerName,
         spotIndex,
         isBot,
         points: 0
@@ -174,8 +174,8 @@ app.post('/start-game', async (req, res) => {
     }
 
     const gameId = `game_${Date.now()}`;
-    const game = {
-        id: gameId,
+        const game = {
+            id: gameId,
         roomId,
         players: room.players,
         round: 1,
@@ -218,18 +218,18 @@ app.post('/submit-number', async (req, res) => {
 
     // Get room and game
     const room = rooms.get(roomId);
-    if (!room) {
+        if (!room) {
         return res.status(404).json({ error: 'Room not found' });
-    }
+        }
 
     const game = games.get(gameId);
-    if (!game) {
+        if (!game) {
         return res.status(404).json({ error: 'Game not found' });
-    }
+        }
 
     // Check if player exists and is not eliminated
-    const player = game.players.find(p => p.id === playerId);
-    if (!player) {
+        const player = game.players.find(p => p.id === playerId);
+        if (!player) {
         return res.status(404).json({ error: 'Player not found' });
     }
 
@@ -280,20 +280,20 @@ app.post('/submit-number', async (req, res) => {
 async function calculateRoundResults(game) {
     const numbers = Array.from(game.submissions.values());
     const average = numbers.reduce((a, b) => a + b, 0) / numbers.length;
-    const target = average * 0.8;
+        const target = average * 0.8;
 
     const results = game.players.map(player => {
         const number = game.submissions.get(player.id);
-        const distance = Math.abs(number - target);
-        return { 
+                const distance = Math.abs(number - target);
+                return {
             player, 
             number, 
             distance,
-            isWinner: false,
+                    isWinner: false,
             points: 0,
             totalPoints: player.points
-        };
-    });
+                };
+            });
 
     // Sort by distance (closest first)
     results.sort((a, b) => a.distance - b.distance);
