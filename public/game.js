@@ -1272,108 +1272,72 @@ class DeathGame {
                     <div class="target">Target (80%): ${data.target.toFixed(2)}</div>
                 </div>
             </div>
-            <div class="rules-container">
-                <h3>Game Rules</h3>
-                <div class="rules-list"></div>
-            </div>
         `;
 
-        // Update rules based on remaining players
-        const alivePlayers = data.results.filter(r => r.isAlive).length;
-        this.updateRules(alivePlayers);
+        // Sort results by distance (closest to target first)
+        const sortedResults = [...data.results].sort((a, b) => a.distance - b.distance);
+        
+        // Update player cards with results
+        sortedResults.forEach(result => {
+            const playerCard = document.querySelector(`.player-card[data-player-id="${result.playerId}"]`);
+            if (playerCard) {
+                // Update player card content
+                playerCard.innerHTML = `
+                    <div class="player-header">
+                        <span class="player-icon">${result.isBot ? '🤖' : '👤'}</span>
+                        <span class="player-name">${result.playerName}</span>
+                    </div>
+                    <div class="player-stats">
+                        <div class="stat-item">
+                            <span class="stat-label">Points</span>
+                            <span class="stat-value points-value ${result.totalPoints < 0 ? 'negative' : 'positive'}">
+                                ${result.totalPoints}
+                            </span>
+                        </div>
+                        <div class="stat-item">
+                            <span class="stat-label">Status</span>
+                            <span class="stat-value ${result.isWinner ? 'positive' : result.isAlive ? '' : 'negative'}">
+                                ${result.isWinner ? '👑 Winner' : !result.isAlive ? '💀 Eliminated' : 'Active'}
+                            </span>
+                        </div>
+                    </div>
+                    <div class="player-submission">
+                        <div class="submission-item">
+                            <div class="submission-label">Number</div>
+                            <div class="submission-value">${result.number}</div>
+                        </div>
+                        <div class="submission-item">
+                            <div class="submission-label">Distance</div>
+                            <div class="submission-value">${result.distance.toFixed(2)}</div>
+                        </div>
+                    </div>
+                    <div class="player-status ${result.isWinner ? 'winner' : !result.isAlive ? 'eliminated' : ''}">
+                        ${result.isWinner ? 
+                            `Winner (+${result.points} points)` : 
+                            !result.isAlive ? 
+                                'Eliminated' : 
+                                `${result.points} points`}
+                    </div>
+                `;
 
-        // Update round number and results display
-        const roundNumber = document.querySelector('.round-number');
-        const numbersList = document.querySelector('.numbers-list');
-
-        // Clear previous submissions
-        if (numbersList) {
-            numbersList.innerHTML = '';
-        }
-
-        // Sort and display results
-        if (data.results && data.results.length > 0) {
-            // Sort results by distance (closest to target first)
-            const sortedResults = [...data.results].sort((a, b) => a.distance - b.distance);
-            
-            // Update player cards and display results
-            sortedResults.forEach(result => {
-                // Update player card
-                const playerCard = document.querySelector(`.player-card[data-player-id="${result.playerId}"]`);
-                if (playerCard) {
-                    // Update points only if player is not eliminated
-                    const pointsValue = playerCard.querySelector('.points-value');
-                    if (pointsValue && !playerCard.classList.contains('eliminated')) {
-                        pointsValue.textContent = result.totalPoints;
-                        pointsValue.className = `points-value ${result.totalPoints < 0 ? 'negative' : 'positive'}`;
-                    }
-
-                    // Update status
-                    const statusDiv = playerCard.querySelector('.player-status');
-                    if (statusDiv) {
-                        if (!result.isAlive) {
-                            statusDiv.textContent = 'Eliminated';
-                            statusDiv.className = 'player-status eliminated';
-                            playerCard.classList.add('eliminated');
-                            
-                            // Disable number buttons if current player is eliminated
-                            if (result.playerId === this.playerId) {
-                                const numberBtns = document.querySelectorAll('.number-btn');
-                                const submitBtn = document.getElementById('submit-number');
-                                numberBtns.forEach(btn => {
-                                    btn.disabled = true;
-                                    btn.classList.add('disabled');
-                                });
-                                if (submitBtn) {
-                                    submitBtn.disabled = true;
-                                    submitBtn.classList.add('disabled');
-                                }
-                            }
-                        } else if (result.isWinner) {
-                            statusDiv.textContent = 'Winner!';
-                            statusDiv.className = 'player-status winner';
-                        } else {
-                            statusDiv.textContent = 'Ready';
-                            statusDiv.className = 'player-status';
-                        }
-                    }
+                // Add appropriate classes
+                if (result.isWinner) {
+                    playerCard.classList.add('winner');
+                } else {
+                    playerCard.classList.remove('winner');
                 }
-
-                // Add submission entry only for non-eliminated players or newly eliminated players
-                if (numbersList && (!playerCard?.classList.contains('eliminated') || !result.isAlive)) {
-                    const submissionEntry = document.createElement('div');
-                    submissionEntry.className = `submission-entry ${result.isWinner ? 'winner' : ''} ${!result.isAlive ? 'eliminated' : ''} ${result.invalid ? 'invalid' : ''}`;
-                    
-                    submissionEntry.innerHTML = `
-                        <div class="player-info">
-                            <span class="player-icon">${result.isBot ? '🤖' : '👤'}</span>
-                            <span class="player-name">${result.playerName}</span>
-                        </div>
-                        <div class="submission-details">
-                            <span class="number-submitted">Number: ${result.number}</span>
-                            <span class="distance">Distance: ${result.distance.toFixed(2)}</span>
-                            ${!playerCard?.classList.contains('eliminated') ? 
-                                `<span class="points ${result.points < 0 ? 'negative' : 'positive'}">${result.isWinner ? '+' : ''}${result.points} points</span>` : 
-                                '<span class="points eliminated">No points (eliminated)</span>'
-                            }
-                        </div>
-                        <div class="status-badges">
-                            ${result.isWinner ? '<span class="winner-badge">👑 Winner</span>' : ''}
-                            ${result.invalid ? '<span class="invalid-badge">❌ Invalid</span>' : ''}
-                            ${!result.isAlive ? '<span class="eliminated-badge">💀 Eliminated</span>' : ''}
-                        </div>
-                    `;
-                    
-                    numbersList.appendChild(submissionEntry);
+                
+                if (!result.isAlive) {
+                    playerCard.classList.add('eliminated');
                 }
-            });
-
-            // Play appropriate sound effects
-            if (data.results.some(r => !r.isAlive)) {
-                this.playSound('elimination');
-            } else if (data.results.some(r => r.isWinner)) {
-                this.playSound('winner');
             }
+        });
+
+        // Play appropriate sound effects
+        if (data.results.some(r => !r.isAlive)) {
+            this.playSound('elimination');
+        } else if (data.results.some(r => r.isWinner)) {
+            this.playSound('winner');
         }
 
         // Start 10-second cooldown for non-eliminated players
@@ -1413,6 +1377,7 @@ class DeathGame {
                     clearInterval(countdownInterval);
                     // Increment round number
                     this.currentRound++;
+                    const roundNumber = document.querySelector('.round-number');
                     if (roundNumber) {
                         roundNumber.textContent = this.currentRound;
                     }
