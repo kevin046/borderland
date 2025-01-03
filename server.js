@@ -206,32 +206,74 @@ app.post('/start-game', async (req, res) => {
     }
 });
 
-// Submit number
+// Submit number endpoint
 app.post('/submit-number', async (req, res) => {
     const { roomId, gameId, playerId, number } = req.body;
-    const game = games.get(gameId);
+    console.log('Received number submission:', { roomId, gameId, playerId, number });
 
+    // Validate input
+    if (number < 0 || number > 100) {
+        return res.status(400).json({ error: 'Invalid number. Must be between 0 and 100' });
+    }
+
+    // Get room and game
+    const room = rooms.get(roomId);
+    if (!room) {
+        return res.status(404).json({ error: 'Room not found' });
+    }
+
+    const game = games.get(gameId);
     if (!game) {
         return res.status(404).json({ error: 'Game not found' });
     }
 
-    if (game.submissions.has(playerId)) {
-        return res.json({ message: 'Number already submitted' });
+    // Check if player exists and is not eliminated
+    const player = game.players.find(p => p.id === playerId);
+    if (!player) {
+        return res.status(404).json({ error: 'Player not found' });
     }
 
-    game.submissions.set(playerId, number);
+    // Check if player is eliminated
+    if (player.points <= -10) {
+        return res.status(400).json({ error: 'Player is eliminated' });
+    }
 
-    // Check if all players have submitted
-    if (game.submissions.size === game.players.length) {
+    // Check if number was already submitted by this player
+    if (game.submissions.has(playerId)) {
+        return res.status(200).json({ 
+            success: true,
+            message: 'Number already submitted',
+            alreadySubmitted: true
+        });
+    }
+
+    // Store the submission
+    game.submissions.set(playerId, number);
+    console.log(`Player ${player.name} submitted number ${number}`);
+
+    // Check if all active players have submitted
+    const activePlayers = game.players.filter(p => p.points > -10);
+    const allSubmitted = activePlayers.every(p => game.submissions.has(p.id));
+
+    if (allSubmitted) {
         try {
+            // Calculate and broadcast results
             await calculateRoundResults(game);
-            res.json({ success: true });
+            res.json({ 
+                success: true,
+                allSubmitted: true,
+                message: 'All players have submitted'
+            });
         } catch (err) {
             console.error('Error calculating results:', err);
             res.status(500).json({ error: 'Failed to calculate results' });
         }
     } else {
-        res.json({ success: true });
+        res.json({ 
+            success: true,
+            allSubmitted: false,
+            message: 'Number submitted successfully'
+        });
     }
 });
 

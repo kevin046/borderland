@@ -1095,53 +1095,62 @@ class DeathGame {
         });
         const gameScreen = document.getElementById('game-screen');
         if (gameScreen) {
-            gameScreen.style.display = 'block';
-        }
-
-        // Store game state
-        localStorage.setItem('gameState', JSON.stringify({
-            roomId: this.roomId,
-            gameId: this.gameId,
-            playerId: this.playerId,
-            playerName: this.playerName,
-            gameStarted: true,
-            players: this.players
-        }));
-
-        // Initialize player cards
-        const playersGrid = document.createElement('div');
-        playersGrid.className = 'players-grid';
-        this.players.forEach(player => {
-            const playerCard = document.createElement('div');
-            playerCard.className = `player-card ${player.id === this.playerId ? 'current-player' : ''}`;
-            playerCard.dataset.playerId = player.id;
-            playerCard.innerHTML = `
-                <div class="player-header">
-                    <span class="player-icon">${player.isBot ? '🤖' : '👤'}</span>
-                    <span class="player-name">${player.name}</span>
-                </div>
-                <div class="player-stats">
-                    <div class="player-points">
-                        <span class="points-label">Points:</span>
-                        <span class="points-value">0</span>
+            gameScreen.style.display = 'grid';
+            gameScreen.innerHTML = `
+                <div class="game-header">
+                    <div class="rules-container">
+                        <h2 class="rules-header">Game Rules & Instructions</h2>
+                        <div class="rules-list"></div>
                     </div>
-                    <div class="player-status">Ready</div>
+                </div>
+                <div class="game-main">
+                    <div class="players-grid"></div>
+                    <div class="number-grid"></div>
+                    <button id="submit-number" class="submit-btn" disabled>Submit Number</button>
+                </div>
+                <div class="game-results">
+                    <div class="round-info">
+                        <h3>Round <span class="round-number">1</span></h3>
+                        <div class="result-numbers">
+                            <div class="average">Average: -</div>
+                            <div class="target">Target (80%): -</div>
+                        </div>
+                    </div>
+                    <div class="numbers-list"></div>
                 </div>
             `;
-            playersGrid.appendChild(playerCard);
-        });
+        }
 
-        // Clear and update game board
-        const gameBoard = document.querySelector('.game-board');
-        if (gameBoard) {
-            gameBoard.innerHTML = '';
-            
-            // Add players grid
-            gameBoard.appendChild(playersGrid);
+        // Initialize rules
+        this.updateRules(this.players.length);
 
-            // Add number grid
-            const numberGridContainer = document.createElement('div');
-            numberGridContainer.className = 'number-grid';
+        // Initialize player cards
+        const playersGrid = document.querySelector('.players-grid');
+        if (playersGrid) {
+            this.players.forEach(player => {
+                const playerCard = document.createElement('div');
+                playerCard.className = `player-card ${player.id === this.playerId ? 'current-player' : ''}`;
+                playerCard.dataset.playerId = player.id;
+                playerCard.innerHTML = `
+                    <div class="player-header">
+                        <span class="player-icon">${player.isBot ? '🤖' : '👤'}</span>
+                        <span class="player-name">${player.name}</span>
+                    </div>
+                    <div class="player-stats">
+                        <div class="player-points">
+                            <span class="points-label">Points:</span>
+                            <span class="points-value">0</span>
+                        </div>
+                        <div class="player-status">Ready</div>
+                    </div>
+                `;
+                playersGrid.appendChild(playerCard);
+            });
+        }
+
+        // Initialize number grid
+        const numberGrid = document.querySelector('.number-grid');
+        if (numberGrid) {
             for (let i = 0; i <= 100; i++) {
                 const button = document.createElement('button');
                 button.className = 'number-btn';
@@ -1159,49 +1168,25 @@ class DeathGame {
                         submitBtn.classList.add('ready');
                     }
                 });
-                numberGridContainer.appendChild(button);
+                numberGrid.appendChild(button);
             }
-            gameBoard.appendChild(numberGridContainer);
+        }
 
-            // Add submit button
-            const submitButton = document.createElement('button');
-            submitButton.id = 'submit-number';
-            submitButton.className = 'submit-btn';
-            submitButton.disabled = true;
-            submitButton.textContent = 'Submit Number';
+        // Add submit button event listener
+        const submitButton = document.getElementById('submit-number');
+        if (submitButton) {
             submitButton.addEventListener('click', () => this.submitNumber());
-            gameBoard.appendChild(submitButton);
         }
 
-        // Initialize round number
-        const roundNumber = document.querySelector('.round-number');
-        if (roundNumber) {
-            roundNumber.textContent = this.currentRound;
-        }
-
-        // Initialize timer
-        const timeRemaining = document.querySelector('.time-remaining');
-        if (timeRemaining) {
-            timeRemaining.textContent = this.players.length === 5 ? '30' : '300';
-        }
-
-        // Update status message
-        const statusMessage = document.querySelector('.status-message');
-        if (statusMessage) {
-            statusMessage.textContent = 'Game started! Choose your number...';
-        }
-
-        // Clear previous results
-        const numbersList = document.querySelector('.numbers-list');
-        if (numbersList) {
-            numbersList.innerHTML = '';
-        }
-
-        // Reset average and target displays
-        const average = document.querySelector('.average');
-        const target = document.querySelector('.target');
-        if (average) average.textContent = '-';
-        if (target) target.textContent = '-';
+        // Store game state
+        localStorage.setItem('gameState', JSON.stringify({
+            roomId: this.roomId,
+            gameId: this.gameId,
+            playerId: this.playerId,
+            playerName: this.playerName,
+            gameStarted: true,
+            players: this.players
+        }));
 
         // Start the round timer
         this.startRoundTimer();
