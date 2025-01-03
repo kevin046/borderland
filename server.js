@@ -78,12 +78,45 @@ app.post('/create-room', (req, res) => {
 // Join a room
 app.post('/join-room', (req, res) => {
     const { roomId } = req.body;
-    
-    if (!rooms.has(roomId)) {
-        return res.status(404).json({ error: 'Room not found' });
+    console.log(`Attempting to join room ${roomId}`);
+
+    // Validate room ID
+    if (!roomId || roomId < 1 || roomId > 9999) {
+        return res.status(400).json({ error: 'Invalid room ID' });
     }
 
-    res.json({ roomId });
+    // Create room if it doesn't exist
+    if (!rooms[roomId]) {
+        rooms[roomId] = {
+            id: roomId,
+            players: [],
+            gameStarted: false,
+            currentRound: 0,
+            roundResults: [],
+            submittedNumbers: new Set(),
+            chatMessages: []
+        };
+        console.log(`Created new room ${roomId}`);
+    }
+
+    // Check if game has already started
+    if (rooms[roomId].gameStarted) {
+        return res.status(200).json({
+            roomId,
+            gameStarted: true
+        });
+    }
+
+    // Return room state
+    res.json({
+        roomId,
+        gameStarted: rooms[roomId].gameStarted,
+        players: rooms[roomId].players.map(player => ({
+            name: player.name,
+            spotIndex: player.spotIndex,
+            isBot: player.isBot
+        }))
+    });
 });
 
 // Join game in a room

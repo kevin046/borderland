@@ -204,6 +204,12 @@ class DeathGame {
         .then(response => response.json())
         .then(data => {
             console.log('Room joined:', data);
+            
+            if (data.gameStarted) {
+                alert('Cannot join room - game already started');
+                return;
+            }
+
             this.roomId = data.roomId;
             this.subscribeToRoom(this.roomId);
 
@@ -217,6 +223,7 @@ class DeathGame {
             const joinBtns = document.querySelectorAll('.join-btn');
             const botBtns = document.querySelectorAll('.bot-btn');
             
+            // First reset all spots
             joinBtns.forEach((btn, i) => {
                 btn.innerHTML = `Join Spot ${i + 1}`;
                 btn.classList.remove('occupied');
@@ -225,16 +232,47 @@ class DeathGame {
                 }
             });
 
-            // Reset players count
-            const playersReadyElement = document.getElementById('players-ready');
-            if (playersReadyElement) {
-                playersReadyElement.textContent = '0';
-            }
+            // Then update with existing players
+            if (data.players && data.players.length > 0) {
+                data.players.forEach(player => {
+                    const index = player.spotIndex;
+                    if (joinBtns[index]) {
+                        const joinBtn = joinBtns[index];
+                        joinBtn.innerHTML = `
+                            <span class="status-icon">${player.isBot ? '🤖' : '👤'}</span>
+                            <span class="player-name">${player.name}</span>
+                            <span class="spot-number">#${index + 1}</span>
+                        `;
+                        joinBtn.classList.add('occupied');
+                        if (botBtns[index]) {
+                            botBtns[index].style.display = 'none';
+                        }
+                    }
+                });
 
-            // Reset start button
-            const startButton = document.getElementById('start-game');
-            if (startButton) {
-                startButton.disabled = true;
+                // Update players count
+                const playersReadyElement = document.getElementById('players-ready');
+                if (playersReadyElement) {
+                    playersReadyElement.textContent = data.players.length;
+                }
+
+                // Update start button
+                const startButton = document.getElementById('start-game');
+                if (startButton) {
+                    startButton.disabled = data.players.length !== this.maxPlayers;
+                }
+            } else {
+                // Reset players count if no players
+                const playersReadyElement = document.getElementById('players-ready');
+                if (playersReadyElement) {
+                    playersReadyElement.textContent = '0';
+                }
+
+                // Reset start button
+                const startButton = document.getElementById('start-game');
+                if (startButton) {
+                    startButton.disabled = true;
+                }
             }
 
             // Play sound effect
