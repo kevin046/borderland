@@ -431,7 +431,13 @@ class DeathGame {
             return;
         }
 
-        // Store player name for chat
+        // Check if name is already taken in the room
+        if (this.players.some(p => p.name === name && !p.isBot)) {
+            alert('This name is already taken. Please choose a different name.');
+            return;
+        }
+
+        // Store player name for chat and future spot changes
         this.playerName = name;
 
         console.log('Attempting to join room:', {
@@ -445,18 +451,40 @@ class DeathGame {
             body: JSON.stringify({
                 roomId: this.roomId,
                 playerName: name,
-                spotIndex: this.selectedSpot
+                spotIndex: this.selectedSpot,
+                isBot: false
             })
         })
         .then(response => response.json())
         .then(data => {
             console.log('Join successful:', data);
+            
+            // Store player ID and game ID
             this.playerId = data.playerId;
+            this.currentPlayer = this.selectedSpot;
             if (data.gameId) {
                 this.gameId = data.gameId;
             }
+
+            // Update local players array with full player data
+            this.players = data.players;
+
+            // Update UI
             this.addPlayer(this.selectedSpot, name);
             this.hideNameModal();
+
+            // Store game state in localStorage
+            localStorage.setItem('gameState', JSON.stringify({
+                roomId: this.roomId,
+                gameId: this.gameId,
+                playerId: this.playerId,
+                playerName: this.playerName,
+                currentSpot: this.selectedSpot,
+                players: this.players
+            }));
+
+            // Play sound effect
+            this.playSound('buttonClick');
         })
         .catch(error => {
             console.error('Detailed error joining game:', error);
@@ -802,47 +830,45 @@ class DeathGame {
         }
 
         // If user already has a spot, handle spot change
-        if (this.currentPlayer !== null) {
-            const currentPlayerData = this.players.find(p => p.index === this.currentPlayer);
-            if (currentPlayerData) {
-                console.log('Changing spot from', this.currentPlayer, 'to', spotIndex);
-                
-                this.fetchWithCORS(`${this.serverUrl}/leave`, {
+        if (this.playerId) {
+            console.log('Changing spot from', this.currentPlayer, 'to', spotIndex);
+            
+            this.fetchWithCORS(`${this.serverUrl}/leave`, {
+                method: 'POST',
+                body: JSON.stringify({
+                    roomId: this.roomId,
+                    playerId: this.playerId,
+                    spotIndex: this.currentPlayer
+                })
+            })
+            .then(response => response.json())
+            .then(() => {
+                // After successfully leaving, join the new spot with the same name
+                return this.fetchWithCORS(`${this.serverUrl}/join`, {
                     method: 'POST',
                     body: JSON.stringify({
                         roomId: this.roomId,
-                        playerId: this.playerId,
-                        spotIndex: this.currentPlayer
+                        playerName: this.playerName,
+                        spotIndex: spotIndex,
+                        isBot: false
                     })
-                })
-                .then(response => response.json())
-                .then(() => {
-                    // After successfully leaving, join the new spot
-                    return this.fetchWithCORS(`${this.serverUrl}/join`, {
-                        method: 'POST',
-                        body: JSON.stringify({
-                            roomId: this.roomId,
-                            playerName: currentPlayerData.name,
-                            spotIndex: spotIndex,
-                            isBot: false
-                        })
-                    });
-                })
-                .then(response => response.json())
-                .then(data => {
-                    console.log('Spot change successful:', data);
-                    this.playerId = data.playerId;
-                    if (data.gameId) {
-                        this.gameId = data.gameId;
-                    }
-                    this.playSound('buttonClick');
-                })
-                .catch(error => {
-                    console.error('Error changing spot:', error);
-                    alert('Failed to change spot. Please try again.');
                 });
-                return;
-            }
+            })
+            .then(response => response.json())
+            .then(data => {
+                console.log('Spot change successful:', data);
+                this.playerId = data.playerId;
+                this.currentPlayer = spotIndex;
+                if (data.gameId) {
+                    this.gameId = data.gameId;
+                }
+                this.playSound('buttonClick');
+            })
+            .catch(error => {
+                console.error('Error changing spot:', error);
+                alert('Failed to change spot. Please try again.');
+            });
+            return;
         }
         
         // For new players who don't have a spot yet

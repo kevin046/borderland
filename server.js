@@ -115,9 +115,10 @@ app.post('/join-room', (req, res) => {
 // Join game in a room
 app.post('/join', async (req, res) => {
     const { roomId, playerName, spotIndex, isBot = false } = req.body;
+    console.log('Join request received:', { roomId, playerName, spotIndex, isBot });
+    
     const room = rooms.get(roomId);
-
-        if (!room) {
+    if (!room) {
         return res.status(404).json({ error: 'Room not found' });
     }
 
@@ -126,25 +127,44 @@ app.post('/join', async (req, res) => {
     }
 
     const playerId = `player_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-        const player = {
-            id: playerId,
-            name: playerName,
+    const player = {
+        id: playerId,
+        name: playerName,
         spotIndex,
         isBot,
         points: 0
     };
 
     room.players.push(player);
+    console.log(`Player ${playerName} (ID: ${playerId}) joined room ${roomId} at spot ${spotIndex}`);
 
     try {
         // Notify all clients in the room
         await pusher.trigger(`game-channel-${roomId}`, 'waiting-room-update', {
-            players: room.players
+            players: room.players.map(p => ({
+                id: p.id,
+                name: p.name,
+                spotIndex: p.spotIndex,
+                isBot: p.isBot,
+                points: p.points
+            }))
         });
         console.log('Pusher event sent successfully');
-        res.json({ playerId });
+        res.json({ 
+            playerId,
+            gameId: room.gameId,
+            players: room.players.map(p => ({
+                id: p.id,
+                name: p.name,
+                spotIndex: p.spotIndex,
+                isBot: p.isBot,
+                points: p.points
+            }))
+        });
     } catch (err) {
         console.error('Pusher event error:', err);
+        // Remove player if notification fails
+        room.players = room.players.filter(p => p.id !== playerId);
         res.status(500).json({ error: 'Failed to send update' });
     }
 });
