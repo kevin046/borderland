@@ -916,16 +916,27 @@ class DeathGame {
             return;
         }
 
+        // Find the bot in the players array
+        const bot = this.players.find(p => p.spotIndex === index && p.isBot);
+        if (!bot) {
+            console.error('Bot not found in spot:', index);
+            return;
+        }
+
         this.fetchWithCORS(`${this.serverUrl}/leave`, {
             method: 'POST',
             body: JSON.stringify({
                 roomId: this.roomId,
+                playerId: bot.id,  // Include the bot's ID
                 spotIndex: index
             })
         })
         .then(response => response.json())
         .then(data => {
             console.log('Bot kicked successfully:', data);
+            
+            // Remove the bot from the local players array
+            this.players = this.players.filter(p => p.spotIndex !== index);
             
             // Reset the spot UI
             const joinBtns = document.querySelectorAll('.join-btn');
@@ -938,6 +949,17 @@ class DeathGame {
                 if (botBtns[index]) {
                     botBtns[index].style.display = 'block';
                 }
+            }
+
+            // Update players count and start button
+            const playersReadyElement = document.getElementById('players-ready');
+            if (playersReadyElement) {
+                playersReadyElement.textContent = this.players.length;
+            }
+
+            const startButton = document.getElementById('start-game');
+            if (startButton) {
+                startButton.disabled = this.players.length !== this.maxPlayers;
             }
 
             // Play sound effect
