@@ -795,17 +795,18 @@ class DeathGame {
         }
 
         // Check if spot is already taken
-        if (this.players.some(p => p.index === spotIndex)) {
+        const joinBtns = document.querySelectorAll('.join-btn');
+        if (joinBtns[spotIndex].classList.contains('occupied')) {
             alert('This spot is already taken!');
             return;
         }
 
-        // If user already has a spot, they can only change their own spot
+        // If user already has a spot, handle spot change
         if (this.currentPlayer !== null) {
-            // Only allow changing their own spot
             const currentPlayerData = this.players.find(p => p.index === this.currentPlayer);
             if (currentPlayerData) {
-                // First, leave the current spot
+                console.log('Changing spot from', this.currentPlayer, 'to', spotIndex);
+                
                 this.fetchWithCORS(`${this.serverUrl}/leave`, {
                     method: 'POST',
                     body: JSON.stringify({
@@ -816,34 +817,32 @@ class DeathGame {
                 })
                 .then(response => response.json())
                 .then(() => {
-                    // Then, join the new spot with the same name
+                    // After successfully leaving, join the new spot
                     return this.fetchWithCORS(`${this.serverUrl}/join`, {
                         method: 'POST',
                         body: JSON.stringify({
                             roomId: this.roomId,
                             playerName: currentPlayerData.name,
-                            spotIndex: spotIndex
+                            spotIndex: spotIndex,
+                            isBot: false
                         })
                     });
                 })
                 .then(response => response.json())
                 .then(data => {
-                    console.log('Spot change response:', data);
+                    console.log('Spot change successful:', data);
                     this.playerId = data.playerId;
                     if (data.gameId) {
                         this.gameId = data.gameId;
                     }
-                    // Remove player from old spot and add to new spot
-                    this.removePlayerFromSpot(this.currentPlayer);
-                    this.addPlayer(spotIndex, currentPlayerData.name);
                     this.playSound('buttonClick');
                 })
                 .catch(error => {
                     console.error('Error changing spot:', error);
                     alert('Failed to change spot. Please try again.');
                 });
+                return;
             }
-            return;
         }
         
         // For new players who don't have a spot yet

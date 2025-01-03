@@ -396,6 +396,45 @@ app.post('/send-message', async (req, res) => {
     }
 });
 
+// Leave spot endpoint
+app.post('/leave', async (req, res) => {
+    const { roomId, playerId, spotIndex } = req.body;
+    console.log('Player leaving spot:', { roomId, playerId, spotIndex });
+
+    const room = rooms.get(roomId);
+    if (!room) {
+        return res.status(404).json({ error: 'Room not found' });
+    }
+
+    // Check if game has already started
+    if (room.gameStarted) {
+        return res.status(400).json({ error: 'Cannot leave during an active game' });
+    }
+
+    // Find and remove the player
+    const playerIndex = room.players.findIndex(p => p.id === playerId);
+    if (playerIndex === -1) {
+        return res.status(404).json({ error: 'Player not found' });
+    }
+
+    // Remove the player
+    room.players.splice(playerIndex, 1);
+
+    try {
+        // Notify all clients in the room about the update
+        await pusher.trigger(`game-channel-${roomId}`, 'waiting-room-update', {
+            players: room.players
+        });
+        console.log('Player left successfully');
+        res.json({ success: true });
+    } catch (err) {
+        console.error('Error sending update after player left:', err);
+        // Add the player back since we couldn't notify others
+        room.players.splice(playerIndex, 0, room.players[playerIndex]);
+        res.status(500).json({ error: 'Failed to update room state' });
+    }
+});
+
 // Start server
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
