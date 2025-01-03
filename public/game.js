@@ -886,75 +886,68 @@ class DeathGame {
         this.selectedSpot = null;
     }
 
-    addPlayer(index, name) {
-        // Remove player from any existing spot
-        if (this.currentPlayer !== null) {
-            this.players = this.players.filter(p => p.index !== this.currentPlayer);
+    addPlayer(index, name, isBot = false) {
+        const joinBtns = document.querySelectorAll('.join-btn');
+        const botBtns = document.querySelectorAll('.bot-btn');
+        
+        if (joinBtns[index]) {
+            const joinBtn = joinBtns[index];
+            joinBtn.innerHTML = `
+                <span class="status-icon">${isBot ? '🤖' : '👤'}</span>
+                <span class="player-name">${name}</span>
+                <span class="spot-number">#${index + 1}</span>
+                ${isBot ? '<button class="kick-bot-btn" onclick="event.stopPropagation(); window.game.kickBot(' + index + ')">❌</button>' : ''}
+            `;
+            joinBtn.classList.add('occupied');
+            if (botBtns[index]) {
+                botBtns[index].style.display = 'none';
+            }
+        }
+    }
+
+    kickBot(index) {
+        if (!this.roomId) {
+            console.error('No room ID found');
+            return;
         }
 
-        // Add player to new spot
-        this.players.push({
-            index,
-            name,
-            points: 0,
-            isAlive: true,
-            isBot: false
-        });
+        // Don't allow kicking bots after game starts
+        if (this.gameStarted) {
+            alert('Cannot kick bots after game has started');
+            return;
+        }
 
-        // Set current player
-        this.currentPlayer = index;
-
-        try {
-            // Update UI for all spots
+        this.fetchWithCORS(`${this.serverUrl}/leave`, {
+            method: 'POST',
+            body: JSON.stringify({
+                roomId: this.roomId,
+                spotIndex: index
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            console.log('Bot kicked successfully:', data);
+            
+            // Reset the spot UI
             const joinBtns = document.querySelectorAll('.join-btn');
             const botBtns = document.querySelectorAll('.bot-btn');
-
-            // Reset all spots first
-            joinBtns.forEach((btn, i) => {
-                if (!this.players.some(p => p.index === i)) {
-                    btn.innerHTML = `Join Spot ${i + 1}`;
-                    btn.classList.remove('occupied', 'other-player');
-                    if (botBtns[i]) {
-                        botBtns[i].style.display = 'block';
-                    }
-                }
-            });
-
-            // Update the selected spot
+            
             if (joinBtns[index]) {
                 const joinBtn = joinBtns[index];
-        joinBtn.innerHTML = `
-            <span class="status-icon">👤</span>
-            <span class="player-name">${name}</span>
-            <span class="spot-number">#${index + 1}</span>
-                    <button class="leave-btn" onclick="window.game.leaveGame()">Leave</button>
-        `;
-        joinBtn.classList.add('occupied');
-
-                // Hide bot button for occupied spot
+                joinBtn.innerHTML = `Join Spot ${index + 1}`;
+                joinBtn.classList.remove('occupied');
                 if (botBtns[index]) {
-                    botBtns[index].style.display = 'none';
+                    botBtns[index].style.display = 'block';
                 }
             }
-            
-            // Update player count and start button
-            const playersReadyElement = document.getElementById('players-ready');
-            const startGameButton = document.getElementById('start-game');
-            
-            if (playersReadyElement) {
-                playersReadyElement.textContent = this.players.length;
-            }
-            
-            if (startGameButton) {
-                startGameButton.disabled = this.players.length !== this.maxPlayers;
-            }
-        } catch (error) {
-            console.error('Error updating UI in addPlayer:', error);
-            // Remove the player if UI update fails
-            this.players = this.players.filter(p => p.index !== index);
-        this.currentPlayer = null;
-            throw error;
-        }
+
+            // Play sound effect
+            this.playSound('buttonClick');
+        })
+        .catch(error => {
+            console.error('Error kicking bot:', error);
+            alert('Failed to kick bot. Please try again.');
+        });
     }
 
     removePlayerFromSpot(index) {
@@ -1004,7 +997,7 @@ class DeathGame {
             }
         });
 
-        // Update spots with current players
+        // Then update with current players
         players.forEach(player => {
             const index = player.spotIndex;
             if (joinBtns[index]) {
@@ -1013,26 +1006,25 @@ class DeathGame {
                     <span class="status-icon">${player.isBot ? '🤖' : '👤'}</span>
                     <span class="player-name">${player.name}</span>
                     <span class="spot-number">#${index + 1}</span>
+                    ${player.isBot ? '<button class="kick-bot-btn" onclick="event.stopPropagation(); window.game.kickBot(' + index + ')">❌</button>' : ''}
                 `;
                 joinBtn.classList.add('occupied');
-
-                // Hide bot button for occupied spot
                 if (botBtns[index]) {
                     botBtns[index].style.display = 'none';
                 }
             }
         });
 
-        // Update player count and start button
+        // Update players count
         const playersReadyElement = document.getElementById('players-ready');
-        const startGameButton = document.getElementById('start-game');
-        
         if (playersReadyElement) {
             playersReadyElement.textContent = players.length;
         }
-        
-        if (startGameButton) {
-            startGameButton.disabled = players.length !== this.maxPlayers;
+
+        // Update start button
+        const startButton = document.getElementById('start-game');
+        if (startButton) {
+            startButton.disabled = players.length !== this.maxPlayers;
         }
 
         // Store the current players
