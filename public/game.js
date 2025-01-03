@@ -194,6 +194,14 @@ class DeathGame {
             return;
         }
 
+        // Prevent multiple join attempts
+        if (this.joiningRoom) {
+            console.log('Already attempting to join room');
+            return;
+        }
+
+        this.joiningRoom = true;
+
         // Clear existing game state
         this.clearGameState();
 
@@ -211,13 +219,17 @@ class DeathGame {
             }
 
             this.roomId = data.roomId;
-            this.subscribeToRoom(this.roomId);
+            
+            // Only subscribe if we haven't already
+            if (!this.gameChannel || this.gameChannel.name !== `game-channel-${this.roomId}`) {
+                this.subscribeToRoom(this.roomId);
+            }
 
-            // Hide room screen and show login screen
+            // Show login screen
             document.querySelectorAll('.screen').forEach(screen => {
-                screen.classList.remove('active');
+                screen.style.display = 'none';
             });
-            document.getElementById('login-screen').classList.add('active');
+            document.getElementById('login-screen').style.display = 'block';
 
             // Reset player spots
             const joinBtns = document.querySelectorAll('.join-btn');
@@ -281,6 +293,9 @@ class DeathGame {
         .catch(error => {
             console.error('Error joining room:', error);
             alert('Failed to join room. Room might not exist.');
+        })
+        .finally(() => {
+            this.joiningRoom = false;
         });
     }
 

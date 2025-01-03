@@ -86,8 +86,8 @@ app.post('/join-room', (req, res) => {
     }
 
     // Create room if it doesn't exist
-    if (!rooms[roomId]) {
-        rooms[roomId] = {
+    if (!rooms.has(roomId)) {
+        rooms.set(roomId, {
             id: roomId,
             players: [],
             gameStarted: false,
@@ -95,12 +95,14 @@ app.post('/join-room', (req, res) => {
             roundResults: [],
             submittedNumbers: new Set(),
             chatMessages: []
-        };
+        });
         console.log(`Created new room ${roomId}`);
     }
 
+    const room = rooms.get(roomId);
+
     // Check if game has already started
-    if (rooms[roomId].gameStarted) {
+    if (room.gameStarted) {
         return res.status(200).json({
             roomId,
             gameStarted: true
@@ -110,8 +112,8 @@ app.post('/join-room', (req, res) => {
     // Return room state
     res.json({
         roomId,
-        gameStarted: rooms[roomId].gameStarted,
-        players: rooms[roomId].players.map(player => ({
+        gameStarted: room.gameStarted,
+        players: room.players.map(player => ({
             name: player.name,
             spotIndex: player.spotIndex,
             isBot: player.isBot
