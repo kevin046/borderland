@@ -206,8 +206,39 @@ class DeathGame {
             console.log('Room joined:', data);
             this.roomId = data.roomId;
             this.subscribeToRoom(this.roomId);
-            document.getElementById('room-screen').classList.remove('active');
+
+            // Hide room screen and show login screen
+            document.querySelectorAll('.screen').forEach(screen => {
+                screen.classList.remove('active');
+            });
             document.getElementById('login-screen').classList.add('active');
+
+            // Reset player spots
+            const joinBtns = document.querySelectorAll('.join-btn');
+            const botBtns = document.querySelectorAll('.bot-btn');
+            
+            joinBtns.forEach((btn, i) => {
+                btn.innerHTML = `Join Spot ${i + 1}`;
+                btn.classList.remove('occupied');
+                if (botBtns[i]) {
+                    botBtns[i].style.display = 'block';
+                }
+            });
+
+            // Reset players count
+            const playersReadyElement = document.getElementById('players-ready');
+            if (playersReadyElement) {
+                playersReadyElement.textContent = '0';
+            }
+
+            // Reset start button
+            const startButton = document.getElementById('start-game');
+            if (startButton) {
+                startButton.disabled = true;
+            }
+
+            // Play sound effect
+            this.playSound('buttonClick');
         })
         .catch(error => {
             console.error('Error joining room:', error);
