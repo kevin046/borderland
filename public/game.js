@@ -1133,6 +1133,18 @@ class DeathGame {
             players: this.players
         }));
 
+        // Create game layout container
+        const gameLayout = document.createElement('div');
+        gameLayout.className = 'game-layout';
+
+        // Create rules section that will be always visible
+        const rulesSection = document.createElement('div');
+        rulesSection.className = 'rules-section';
+        rulesSection.innerHTML = `
+            <h3>Game Rules</h3>
+            <div class="rules-list"></div>
+        `;
+
         // Initialize player cards
         const playersGrid = document.createElement('div');
         playersGrid.className = 'players-grid';
@@ -1152,51 +1164,75 @@ class DeathGame {
                     </div>
                     <div class="player-status">Ready</div>
                 </div>
+                <div class="round-details" style="display: none;">
+                    <div class="round-detail-item">
+                        <span class="detail-label">Number:</span>
+                        <span class="detail-value">-</span>
+                    </div>
+                    <div class="round-detail-item">
+                        <span class="detail-label">Distance:</span>
+                        <span class="detail-value">-</span>
+                    </div>
+                    <div class="round-detail-item">
+                        <span class="detail-label">Result:</span>
+                        <span class="detail-value">-</span>
+                    </div>
+                </div>
             `;
             playersGrid.appendChild(playerCard);
         });
 
-        // Clear and update game board
-        const gameBoard = document.querySelector('.game-board');
-        if (gameBoard) {
-            gameBoard.innerHTML = '';
-            
-            // Add players grid
-            gameBoard.appendChild(playersGrid);
+        // Create game board container
+        const gameBoard = document.createElement('div');
+        gameBoard.className = 'game-board';
 
-            // Add number grid
-            const numberGridContainer = document.createElement('div');
-            numberGridContainer.className = 'number-grid';
-            for (let i = 0; i <= 100; i++) {
-                const button = document.createElement('button');
-                button.className = 'number-btn';
-                button.textContent = i;
-                button.dataset.number = i;
-                button.addEventListener('click', () => {
-                    document.querySelectorAll('.number-btn').forEach(btn => {
-                        btn.classList.remove('selected');
-                    });
-                    button.classList.add('selected');
-                    this.selectedNumber = i;
-                    const submitBtn = document.getElementById('submit-number');
-                    if (submitBtn) {
-                        submitBtn.disabled = false;
-                        submitBtn.classList.add('ready');
-                    }
+        // Add number grid
+        const numberGridContainer = document.createElement('div');
+        numberGridContainer.className = 'number-grid';
+        for (let i = 0; i <= 100; i++) {
+            const button = document.createElement('button');
+            button.className = 'number-btn';
+            button.textContent = i;
+            button.dataset.number = i;
+            button.addEventListener('click', () => {
+                document.querySelectorAll('.number-btn').forEach(btn => {
+                    btn.classList.remove('selected');
                 });
-                numberGridContainer.appendChild(button);
-            }
-            gameBoard.appendChild(numberGridContainer);
-
-            // Add submit button
-            const submitButton = document.createElement('button');
-            submitButton.id = 'submit-number';
-            submitButton.className = 'submit-btn';
-            submitButton.disabled = true;
-            submitButton.textContent = 'Submit Number';
-            submitButton.addEventListener('click', () => this.submitNumber());
-            gameBoard.appendChild(submitButton);
+                button.classList.add('selected');
+                this.selectedNumber = i;
+                const submitBtn = document.getElementById('submit-number');
+                if (submitBtn) {
+                    submitBtn.disabled = false;
+                    submitBtn.classList.add('ready');
+                }
+            });
+            numberGridContainer.appendChild(button);
         }
+        gameBoard.appendChild(numberGridContainer);
+
+        // Add submit button
+        const submitButton = document.createElement('button');
+        submitButton.id = 'submit-number';
+        submitButton.className = 'submit-btn';
+        submitButton.disabled = true;
+        submitButton.textContent = 'Submit Number';
+        submitButton.addEventListener('click', () => this.submitNumber());
+        gameBoard.appendChild(submitButton);
+
+        // Add all components to the game layout
+        gameLayout.appendChild(rulesSection);
+        gameLayout.appendChild(playersGrid);
+        gameLayout.appendChild(gameBoard);
+
+        // Clear and update game container
+        const gameContainer = document.querySelector('.game-container');
+        if (gameContainer) {
+            gameContainer.innerHTML = '';
+            gameContainer.appendChild(gameLayout);
+        }
+
+        // Update rules based on player count
+        this.updateRules(this.players.length);
 
         // Initialize round number
         const roundNumber = document.querySelector('.round-number');
@@ -1215,18 +1251,6 @@ class DeathGame {
         if (statusMessage) {
             statusMessage.textContent = 'Game started! Choose your number...';
         }
-
-        // Clear previous results
-        const numbersList = document.querySelector('.numbers-list');
-        if (numbersList) {
-            numbersList.innerHTML = '';
-        }
-
-        // Reset average and target displays
-        const average = document.querySelector('.average');
-        const target = document.querySelector('.target');
-        if (average) average.textContent = '-';
-        if (target) target.textContent = '-';
 
         // Start the round timer
         this.startRoundTimer();
