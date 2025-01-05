@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Balance Scale - Game Test</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="game-layout">
+        <!-- Rules Section -->
+        <div class="rules-section">
+            <h3>Game Rules</h3>
+            <div class="rules-list">
+                <div class="rule-item">
+                    <span class="rule-icon">🎯</span>
+                    <span class="rule-text">Select a number between 0 and 100</span>
+                </div>
+                <div class="rule-item">
+                    <span class="rule-icon">🎲</span>
+                    <span class="rule-text">Target = Average × 0.8 (4/5ths)</span>
+                </div>
+                <div class="rule-item">
+                    <span class="rule-icon">👑</span>
+                    <span class="rule-text">Player closest to target wins the round</span>
+                </div>
+                <div class="rule-item">
+                    <span class="rule-icon">⚠️</span>
+                    <span class="rule-text">All losers lose 1 point</span>
+                </div>
+                <div class="rule-item">
+                    <span class="rule-icon">💀</span>
+                    <span class="rule-text">Game Over: Reach -10 points</span>
+                </div>
+                <div class="rule-item">
+                    <span class="rule-icon">⏱️</span>
+                    <span class="rule-text">Time Limit: 30 seconds per round</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Game Content -->
+        <div class="game-content">
+            <!-- Game Results Container -->
+            <div class="game-results-container">
+                <div class="round-info">
+                    <div class="round-header">
+                        <h2>Round 3</h2>
+                        <div class="round-numbers">
+                            <div class="stat-box">
+                                <div class="stat-label">Average</div>
+                                <div class="stat-value">53.40</div>
+                            </div>
+                            <div class="stat-box highlight">
+                                <div class="stat-label">Target (80%)</div>
+                                <div class="stat-value">42.72</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Players Grid -->
+            <div class="players-grid">
+                <!-- Winner Player Card -->
+                <div class="player-card winner">
+                    <div class="player-header">
+                        <span class="player-icon">🤖</span>
+                        <span class="player-name">Bot 5</span>
+                    </div>
+                    <div class="player-stats">
+                        <div class="player-points">
+                            <span class="points-label">Points:</span>
+                            <span class="points-value positive">8</span>
+                        </div>
+                        <div class="player-status winner">Winner!</div>
+                    </div>
+                    <div class="round-details">
+                        <div class="round-detail-item">
+                            <span class="detail-label">Number:</span>
+                            <span class="detail-value">45</span>
+                        </div>
+                        <div class="round-detail-item">
+                            <span class="detail-label">Distance:</span>
+                            <span class="detail-value">2.28</span>
+                        </div>
+                        <div class="round-detail-item">
+                            <span class="detail-label">Result:</span>
+                            <span class="detail-value winner">Winner!</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Regular Player Card -->
+                <div class="player-card">
+                    <div class="player-header">
+                        <span class="player-icon">👤</span>
+                        <span class="player-name">Kevin</span>
+                    </div>
+                    <div class="player-stats">
+                        <div class="player-points">
+                            <span class="points-label">Points:</span>
+                            <span class="points-value negative">-2</span>
+                        </div>
+                        <div class="player-status">Ready</div>
+                    </div>
+                    <div class="round-details">
+                        <div class="round-detail-item">
+                            <span class="detail-label">Number:</span>
+                            <span class="detail-value">1</span>
+                        </div>
+                        <div class="round-detail-item">
+                            <span class="detail-label">Distance:</span>
+                            <span class="detail-value">41.72</span>
+                        </div>
+                        <div class="round-detail-item">
+                            <span class="detail-label">Result:</span>
+                            <span class="detail-value negative">-1 point</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Eliminated Player Card -->
+                <div class="player-card eliminated">
+                    <div class="player-header">
+                        <span class="player-icon">🤖</span>
+                        <span class="player-name">Bot 3</span>
+                    </div>
+                    <div class="player-stats">
+                        <div class="player-points">
+                            <span class="points-label">Points:</span>
+                            <span class="points-value negative">-10</span>
+                        </div>
+                        <div class="player-status eliminated">Eliminated</div>
+                    </div>
+                    <div class="round-details">
+                        <div class="round-detail-item">
+                            <span class="detail-label">Number:</span>
+                            <span class="detail-value">98</span>
+                        </div>
+                        <div class="round-detail-item">
+                            <span class="detail-label">Distance:</span>
+                            <span class="detail-value">55.28</span>
+                        </div>
+                        <div class="round-detail-item">
+                            <span class="detail-label">Result:</span>
+                            <span class="detail-value negative">Eliminated!</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Game Board -->
+            <div class="game-board">
+                <div class="number-grid">
+                    <!-- Sample of number buttons -->
+                    <button class="number-btn">0</button>
+                    <button class="number-btn">1</button>
+                    <button class="number-btn selected">2</button>
+                    <button class="number-btn">3</button>
+                    <button class="number-btn">4</button>
+                    <!-- Add more buttons as needed -->
+                </div>
+                <button id="submit-number" class="submit-btn ready">Submit Number</button>
+            </div>
+
+            <!-- Status Message -->
+            <div class="status-message">Choose your number for the next round...</div>
+        </div>
+    </div>
+
+    <!-- Chat Box -->
+    <div class="chat-box">
+        <div class="chat-header">
+            <h3>Chat Room</h3>
+            <button class="minimize-btn">−</button>
+        </div>
+        <div class="chat-messages" id="chat-messages">
+            <div class="chat-message other">
+                <div class="message-info">Bot 5</div>
+                <div class="message-content">I'm going to win this round!</div>
+            </div>
+            <div class="chat-message own">
+                <div class="message-info">You</div>
+                <div class="message-content">We'll see about that!</div>
+            </div>
+        </div>
+        <div class="chat-input-area">
+            <input type="text" id="chat-input" placeholder="Type your message..." maxlength="100">
+            <button id="send-message">Send</button>
+        </div>
+    </div>
+</body>
+</html> 

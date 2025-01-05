@@ -118,7 +118,7 @@ app.post('/join', async (req, res) => {
     console.log('Join request received:', { roomId, playerName, spotIndex, isBot });
     
     const room = rooms.get(roomId);
-    if (!room) {
+        if (!room) {
         return res.status(404).json({ error: 'Room not found' });
     }
 
@@ -127,9 +127,9 @@ app.post('/join', async (req, res) => {
     }
 
     const playerId = `player_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-    const player = {
-        id: playerId,
-        name: playerName,
+        const player = {
+            id: playerId,
+            name: playerName,
         spotIndex,
         isBot,
         points: 0
