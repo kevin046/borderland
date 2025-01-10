@@ -1114,27 +1114,21 @@ class DeathGame {
         this.gameId = data.gameId;
         this.players = data.players;
         
-        // Hide all screens except game screen
+        // Hide all other screens first
         document.querySelectorAll('.screen').forEach(screen => {
-            screen.style.display = 'none';
+            if (screen.id !== 'game-screen') {
+                screen.style.display = 'none';
+            }
         });
-        
-        // Show and setup game screen
+
+        // Get and clear game screen
         const gameScreen = document.getElementById('game-screen');
         if (gameScreen) {
+            gameScreen.innerHTML = ''; // Clear existing content
             gameScreen.style.display = 'block';
             gameScreen.style.background = '#1a1f25';
             gameScreen.style.minHeight = '100vh';
             gameScreen.style.width = '100%';
-            gameScreen.style.position = 'relative';
-            
-            // Create and append game container if it doesn't exist
-            let gameContainer = gameScreen.querySelector('.game-container');
-            if (!gameContainer) {
-                gameContainer = document.createElement('div');
-                gameContainer.className = 'game-container';
-                gameScreen.appendChild(gameContainer);
-            }
             
             // Store game state
             localStorage.setItem('gameState', JSON.stringify({
@@ -1256,9 +1250,8 @@ class DeathGame {
             gameLayout.appendChild(rulesSection);
             gameLayout.appendChild(gameContent);
 
-            // Clear and update game container
-            gameContainer.innerHTML = '';
-            gameContainer.appendChild(gameLayout);
+            // Add game layout directly to game screen
+            gameScreen.appendChild(gameLayout);
 
             // Update rules based on player count
             this.updateRules(this.players.length);
