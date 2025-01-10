@@ -1121,6 +1121,8 @@ class DeathGame {
         const gameScreen = document.getElementById('game-screen');
         if (gameScreen) {
             gameScreen.style.display = 'block';
+            gameScreen.style.background = '#1a1f25';  // Set dark background
+            gameScreen.style.minHeight = '100vh';     // Ensure full height
         }
 
         // Store game state
@@ -1136,6 +1138,7 @@ class DeathGame {
         // Create game layout container
         const gameLayout = document.createElement('div');
         gameLayout.className = 'game-layout';
+        gameLayout.style.background = '#1a1f25';  // Ensure dark background
 
         // Create rules section that will be always visible
         const rulesSection = document.createElement('div');
@@ -1148,6 +1151,7 @@ class DeathGame {
         // Create game content section
         const gameContent = document.createElement('div');
         gameContent.className = 'game-content';
+        gameContent.style.background = '#1a1f25';  // Set dark background
 
         // Create players grid
         const playersGrid = document.createElement('div');
@@ -1189,6 +1193,15 @@ class DeathGame {
         // Create game board
         const gameBoard = document.createElement('div');
         gameBoard.className = 'game-board';
+
+        // Add timer display
+        const timerDisplay = document.createElement('div');
+        timerDisplay.className = 'timer-display';
+        timerDisplay.innerHTML = `
+            <span>Time Remaining: </span>
+            <span class="time-remaining">-</span>
+        `;
+        gameBoard.appendChild(timerDisplay);
 
         // Create number grid
         const numberGridContainer = document.createElement('div');
@@ -1241,6 +1254,7 @@ class DeathGame {
         if (gameContainer) {
             gameContainer.innerHTML = '';
             gameContainer.appendChild(gameLayout);
+            gameContainer.style.background = '#1a1f25';  // Set dark background
         }
 
         // Update rules based on player count
