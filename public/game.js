@@ -1156,6 +1156,19 @@ class DeathGame {
             const gameContent = document.createElement('div');
             gameContent.className = 'game-content';
 
+            // Create game board
+            const gameBoard = document.createElement('div');
+            gameBoard.className = 'game-board';
+
+            // Add timer display
+            const timerDisplay = document.createElement('div');
+            timerDisplay.className = 'timer-display';
+            timerDisplay.innerHTML = `
+                <span>Time Remaining: </span>
+                <span class="time-remaining">-</span>
+            `;
+            gameBoard.appendChild(timerDisplay);
+
             // Create players grid
             const playersGrid = document.createElement('div');
             playersGrid.className = 'players-grid';
@@ -1192,19 +1205,6 @@ class DeathGame {
                 `;
                 playersGrid.appendChild(playerCard);
             });
-
-            // Create game board
-            const gameBoard = document.createElement('div');
-            gameBoard.className = 'game-board';
-
-            // Add timer display
-            const timerDisplay = document.createElement('div');
-            timerDisplay.className = 'timer-display';
-            timerDisplay.innerHTML = `
-                <span>Time Remaining: </span>
-                <span class="time-remaining">-</span>
-            `;
-            gameBoard.appendChild(timerDisplay);
 
             // Create number grid
             const numberGridContainer = document.createElement('div');
@@ -1588,6 +1588,96 @@ class DeathGame {
                 }
             }
         }, 1000);
+    }
+
+    handleRoundResult(data) {
+        console.log('Handling round result:', data);
+        const { submissions, average, target, winner, eliminated } = data;
+
+        // Update player cards with round results
+        Object.entries(submissions).forEach(([playerId, submission]) => {
+            const playerCard = document.querySelector(`.player-card[data-player-id="${playerId}"]`);
+            if (playerCard) {
+                // Show round details
+                const roundDetails = playerCard.querySelector('.round-details');
+                if (roundDetails) {
+                    roundDetails.style.display = 'block';
+                    
+                    // Update number
+                    const numberValue = roundDetails.querySelector('.detail-value');
+                    if (numberValue) numberValue.textContent = submission.number;
+
+                    // Update distance
+                    const distanceValue = roundDetails.querySelector('.detail-value:nth-child(2)');
+                    if (distanceValue) distanceValue.textContent = submission.distance.toFixed(2);
+
+                    // Update result
+                    const resultValue = roundDetails.querySelector('.detail-value:last-child');
+                    if (resultValue) {
+                        if (playerId === winner) {
+                            resultValue.textContent = 'Winner!';
+                            resultValue.classList.add('winner');
+                            playerCard.classList.add('winner');
+                        } else if (eliminated.includes(playerId)) {
+                            resultValue.textContent = 'Eliminated';
+                            resultValue.classList.add('negative');
+                            playerCard.classList.add('eliminated');
+                        } else {
+                            resultValue.textContent = '-1 point';
+                            resultValue.classList.add('negative');
+                        }
+                    }
+                }
+
+                // Update points
+                const pointsValue = playerCard.querySelector('.points-value');
+                if (pointsValue) {
+                    const points = submission.points;
+                    pointsValue.textContent = points;
+                    pointsValue.className = 'points-value ' + (points >= 0 ? 'positive' : 'negative');
+                }
+
+                // Update status
+                const playerStatus = playerCard.querySelector('.player-status');
+                if (playerStatus) {
+                    if (eliminated.includes(playerId)) {
+                        playerStatus.textContent = 'Eliminated';
+                        playerStatus.classList.add('eliminated');
+                    } else if (playerId === winner) {
+                        playerStatus.textContent = 'Winner';
+                        playerStatus.classList.add('winner');
+                    } else {
+                        playerStatus.textContent = 'Ready';
+                    }
+                }
+            }
+        });
+
+        // Update status message
+        const statusMessage = document.querySelector('.status-message');
+        if (statusMessage) {
+            statusMessage.innerHTML = `
+                Round Complete!<br>
+                Average: ${average.toFixed(2)}<br>
+                Target: ${target.toFixed(2)}
+            `;
+        }
+
+        // Reset for next round if not eliminated
+        if (!eliminated.includes(this.playerId)) {
+            this.selectedNumber = undefined;
+            const submitBtn = document.getElementById('submit-number');
+            if (submitBtn) {
+                submitBtn.disabled = true;
+            }
+            // Remove selection from number grid
+            document.querySelectorAll('.number-btn').forEach(btn => {
+                btn.classList.remove('selected');
+            });
+        }
+
+        // Start new round timer
+        this.startRoundTimer();
     }
 }
 
