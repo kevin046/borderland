@@ -1145,7 +1145,11 @@ class DeathGame {
             <div class="rules-list"></div>
         `;
 
-        // Initialize player cards
+        // Create game content section
+        const gameContent = document.createElement('div');
+        gameContent.className = 'game-content';
+
+        // Create players grid
         const playersGrid = document.createElement('div');
         playersGrid.className = 'players-grid';
         this.players.forEach(player => {
@@ -1182,11 +1186,11 @@ class DeathGame {
             playersGrid.appendChild(playerCard);
         });
 
-        // Create game board container
+        // Create game board
         const gameBoard = document.createElement('div');
         gameBoard.className = 'game-board';
 
-        // Add number grid
+        // Create number grid
         const numberGridContainer = document.createElement('div');
         numberGridContainer.className = 'number-grid';
         for (let i = 0; i <= 100; i++) {
@@ -1203,7 +1207,6 @@ class DeathGame {
                 const submitBtn = document.getElementById('submit-number');
                 if (submitBtn) {
                     submitBtn.disabled = false;
-                    submitBtn.classList.add('ready');
                 }
             });
             numberGridContainer.appendChild(button);
@@ -1219,10 +1222,19 @@ class DeathGame {
         submitButton.addEventListener('click', () => this.submitNumber());
         gameBoard.appendChild(submitButton);
 
-        // Add all components to the game layout
+        // Add status message
+        const statusMessage = document.createElement('div');
+        statusMessage.className = 'status-message';
+        statusMessage.textContent = 'Choose your number...';
+        gameBoard.appendChild(statusMessage);
+
+        // Add components to game content
+        gameContent.appendChild(playersGrid);
+        gameContent.appendChild(gameBoard);
+
+        // Add all sections to game layout
         gameLayout.appendChild(rulesSection);
-        gameLayout.appendChild(playersGrid);
-        gameLayout.appendChild(gameBoard);
+        gameLayout.appendChild(gameContent);
 
         // Clear and update game container
         const gameContainer = document.querySelector('.game-container');
@@ -1234,317 +1246,11 @@ class DeathGame {
         // Update rules based on player count
         this.updateRules(this.players.length);
 
-        // Initialize round number
-        const roundNumber = document.querySelector('.round-number');
-        if (roundNumber) {
-            roundNumber.textContent = this.currentRound;
-        }
-
-        // Initialize timer
-        const timeRemaining = document.querySelector('.time-remaining');
-        if (timeRemaining) {
-            timeRemaining.textContent = this.players.length === 5 ? '30' : '300';
-        }
-
-        // Update status message
-        const statusMessage = document.querySelector('.status-message');
-        if (statusMessage) {
-            statusMessage.textContent = 'Game started! Choose your number...';
-        }
-
         // Start the round timer
         this.startRoundTimer();
 
         // Play game start sound
         this.playSound('buttonClick');
-    }
-
-    startRoundTimer() {
-        // Clear any existing timer
-        if (this.timer) {
-            clearInterval(this.timer);
-        }
-
-        // Reset the time based on number of players
-        this.remainingTime = this.players.length === 5 ? 30 : 300;
-
-        // Update timer display
-        const timerDisplay = document.querySelector('.time-remaining');
-        if (timerDisplay) {
-            timerDisplay.textContent = this.remainingTime;
-        }
-
-        // Start the countdown
-        this.timer = setInterval(() => {
-            this.remainingTime--;
-            
-            // Update timer display
-            if (timerDisplay) {
-                timerDisplay.textContent = this.remainingTime;
-            }
-
-            // Handle timer expiration
-            if (this.remainingTime <= 0) {
-                clearInterval(this.timer);
-                // Auto-submit if player hasn't submitted yet
-                if (this.selectedNumber !== undefined) {
-                    this.submitNumber();
-                }
-            }
-        }, 1000);
-    }
-
-    handleRoundResult(data) {
-        console.log('Handling round result:', data);
-        
-        // Clear the current round timer
-        if (this.timer) {
-            clearInterval(this.timer);
-        }
-
-        // Create or update game results container
-        let gameResultsContainer = document.querySelector('.game-results-container');
-        if (!gameResultsContainer) {
-            gameResultsContainer = document.createElement('div');
-            gameResultsContainer.className = 'game-results-container';
-            const gameBoard = document.querySelector('.game-board');
-            if (gameBoard) {
-                gameBoard.insertBefore(gameResultsContainer, gameBoard.firstChild);
-            }
-        }
-
-        // Update game results display with modern styling
-        gameResultsContainer.innerHTML = `
-            <div class="round-info">
-                <div class="round-header">
-                    <h2>Round ${this.currentRound}</h2>
-                    <div class="round-numbers">
-                        <div class="stat-box">
-                            <div class="stat-label">Average</div>
-                            <div class="stat-value">${data.average.toFixed(2)}</div>
-                        </div>
-                        <div class="stat-box highlight">
-                            <div class="stat-label">Target (80%)</div>
-                            <div class="stat-value">${data.target.toFixed(2)}</div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-            <div class="rules-container">
-                <h3>Game Rules</h3>
-                <div class="rules-list"></div>
-            </div>
-        `;
-
-        // Update rules based on remaining players
-        const alivePlayers = data.results.filter(r => r.isAlive).length;
-        this.updateRules(alivePlayers);
-
-        // Update round number and results display
-        const roundNumber = document.querySelector('.round-number');
-        const numbersList = document.querySelector('.numbers-list');
-
-        // Clear previous submissions
-        if (numbersList) {
-            numbersList.innerHTML = '';
-        }
-
-        // Sort and display results
-        if (data.results && data.results.length > 0) {
-            // Sort results by distance (closest to target first)
-            const sortedResults = [...data.results].sort((a, b) => a.distance - b.distance);
-            
-            // Update player cards and display results
-            sortedResults.forEach(result => {
-                // Update player card
-                const playerCard = document.querySelector(`.player-card[data-player-id="${result.playerId}"]`);
-                if (playerCard) {
-                    // Update points only if player is not eliminated
-                    const pointsValue = playerCard.querySelector('.points-value');
-                    if (pointsValue && !playerCard.classList.contains('eliminated')) {
-                        // Winner keeps points, losers lose 1 point
-                        const newPoints = result.isWinner ? result.totalPoints : result.totalPoints - 1;
-                        pointsValue.textContent = newPoints;
-                        pointsValue.className = `points-value ${newPoints < 0 ? 'negative' : 'positive'}`;
-                    }
-
-                    // Update player card with round details
-                    const roundDetails = document.createElement('div');
-                    roundDetails.className = 'round-details';
-                    roundDetails.innerHTML = `
-                        <div class="round-detail-item">
-                            <span class="detail-label">Number:</span>
-                            <span class="detail-value">${result.number}</span>
-                        </div>
-                        <div class="round-detail-item">
-                            <span class="detail-label">Distance:</span>
-                            <span class="detail-value">${result.distance.toFixed(2)}</span>
-                        </div>
-                        <div class="round-detail-item">
-                            <span class="detail-label">Result:</span>
-                            <span class="detail-value ${result.isWinner ? 'winner' : 'negative'}">
-                                ${result.isWinner ? 'Winner!' : '-1 point'}
-                            </span>
-                        </div>
-                    `;
-
-                    // Update status
-                    const statusDiv = playerCard.querySelector('.player-status');
-                    if (statusDiv) {
-                        if (!result.isAlive) {
-                            statusDiv.textContent = 'Eliminated';
-                            statusDiv.className = 'player-status eliminated';
-                            playerCard.classList.add('eliminated');
-                            
-                            // Disable number buttons if current player is eliminated
-                            if (result.playerId === this.playerId) {
-                                const numberBtns = document.querySelectorAll('.number-btn');
-                                const submitBtn = document.getElementById('submit-number');
-                                numberBtns.forEach(btn => {
-                                    btn.disabled = true;
-                                    btn.classList.add('disabled');
-                                });
-                                if (submitBtn) {
-                                    submitBtn.disabled = true;
-                                    submitBtn.classList.add('disabled');
-                                }
-                            }
-                        } else if (result.isWinner) {
-                            statusDiv.textContent = 'Winner!';
-                            statusDiv.className = 'player-status winner';
-                        } else {
-                            statusDiv.textContent = 'Ready';
-                            statusDiv.className = 'player-status';
-                        }
-                    }
-
-                    // Remove any existing round details
-                    const existingDetails = playerCard.querySelector('.round-details');
-                    if (existingDetails) {
-                        existingDetails.remove();
-                    }
-
-                    // Add new round details after player-stats
-                    const playerStats = playerCard.querySelector('.player-stats');
-                    if (playerStats) {
-                        playerStats.after(roundDetails);
-                    }
-                }
-
-                // Add submission entry with modern styling
-                if (numbersList && (!playerCard?.classList.contains('eliminated') || !result.isAlive)) {
-                    const submissionEntry = document.createElement('div');
-                    submissionEntry.className = `submission-entry ${result.isWinner ? 'winner' : ''} ${!result.isAlive ? 'eliminated' : ''} ${result.invalid ? 'invalid' : ''}`;
-                    
-                    submissionEntry.innerHTML = `
-                        <div class="submission-content">
-                            <div class="player-info">
-                                <span class="player-icon">${result.isBot ? '🤖' : '👤'}</span>
-                                <span class="player-name">${result.playerName}</span>
-                            </div>
-                            <div class="submission-details">
-                                <div class="detail-item">
-                                    <span class="detail-label">Number:</span>
-                                    <span class="detail-value">${result.number}</span>
-                                </div>
-                                <div class="detail-item">
-                                    <span class="detail-label">Distance:</span>
-                                    <span class="detail-value">${result.distance.toFixed(2)}</span>
-                                </div>
-                                <div class="detail-item">
-                                    <span class="detail-label">Total Points:</span>
-                                    <span class="detail-value ${result.totalPoints < 0 ? 'negative' : 'positive'}">${result.totalPoints}</span>
-                                </div>
-                                <div class="detail-item">
-                                    <span class="detail-label">Round Result:</span>
-                                    <span class="detail-value ${result.isWinner ? 'winner' : 'negative'}">
-                                        ${result.isWinner ? 'Winner!' : '-1 point'}
-                                    </span>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="status-badges">
-                            ${result.isWinner ? '<span class="winner-badge">👑 Winner</span>' : ''}
-                            ${result.invalid ? '<span class="invalid-badge">❌ Invalid</span>' : ''}
-                            ${!result.isAlive ? '<span class="eliminated-badge">💀 Eliminated</span>' : ''}
-                        </div>
-                    `;
-                    
-                    numbersList.appendChild(submissionEntry);
-                }
-            });
-
-            // Play appropriate sound effects
-            if (data.results.some(r => !r.isAlive)) {
-                this.playSound('elimination');
-            } else if (data.results.some(r => r.isWinner)) {
-                this.playSound('winner');
-            }
-        }
-
-        // Start 10-second cooldown for non-eliminated players
-        const statusMessage = document.querySelector('.status-message');
-        const currentPlayerResult = data.results.find(r => r.playerId === this.playerId);
-        
-        if (statusMessage) {
-            if (currentPlayerResult && !currentPlayerResult.isAlive) {
-                statusMessage.textContent = 'You have been eliminated from the game!';
-                statusMessage.className = 'status-message eliminated';
-            } else {
-                statusMessage.textContent = 'Next round starting in 10 seconds...';
-                statusMessage.className = 'status-message';
-            }
-        }
-
-        // Disable all buttons during cooldown
-        const numberBtns = document.querySelectorAll('.number-btn');
-        const submitBtn = document.getElementById('submit-number');
-        numberBtns.forEach(btn => {
-            btn.disabled = true;
-            btn.classList.remove('selected');
-        });
-        if (submitBtn) {
-            submitBtn.disabled = true;
-            submitBtn.classList.remove('ready');
-        }
-
-        // Create countdown display only if player is not eliminated
-        if (currentPlayerResult && currentPlayerResult.isAlive) {
-            let countdown = 10;
-            const countdownInterval = setInterval(() => {
-                countdown--;
-                if (statusMessage) {
-                    statusMessage.textContent = `Next round starting in ${countdown} seconds...`;
-                }
-                
-                if (countdown <= 0) {
-                    clearInterval(countdownInterval);
-                    // Increment round number
-                    this.currentRound++;
-                    if (roundNumber) {
-                        roundNumber.textContent = this.currentRound;
-                    }
-
-                    // Re-enable buttons for next round
-                    numberBtns.forEach(btn => {
-                        btn.disabled = false;
-                        btn.classList.remove('disabled');
-                    });
-                    if (submitBtn) {
-                        submitBtn.disabled = true;
-                        submitBtn.classList.remove('disabled');
-                    }
-
-                    // Update status message
-                    if (statusMessage) {
-                        statusMessage.textContent = 'Choose your number for the next round...';
-                    }
-
-                    // Start new round timer
-                    this.startRoundTimer();
-                }
-            }, 1000);
-        }
     }
 
     startGame() {
@@ -1836,6 +1542,41 @@ class DeathGame {
 
         // Play sound effect
         this.playSound('buttonClick');
+    }
+
+    startRoundTimer() {
+        // Clear any existing timer
+        if (this.timer) {
+            clearInterval(this.timer);
+        }
+
+        // Reset the time based on number of players
+        this.remainingTime = this.players.length === 5 ? 30 : 300;
+
+        // Update timer display
+        const timerDisplay = document.querySelector('.time-remaining');
+        if (timerDisplay) {
+            timerDisplay.textContent = this.remainingTime;
+        }
+
+        // Start the countdown
+        this.timer = setInterval(() => {
+            this.remainingTime--;
+            
+            // Update timer display
+            if (timerDisplay) {
+                timerDisplay.textContent = this.remainingTime;
+            }
+
+            // Handle timer expiration
+            if (this.remainingTime <= 0) {
+                clearInterval(this.timer);
+                // Auto-submit if player hasn't submitted yet
+                if (this.selectedNumber !== undefined) {
+                    this.submitNumber();
+                }
+            }
+        }, 1000);
     }
 }
 
