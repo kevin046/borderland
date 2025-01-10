@@ -1118,153 +1118,157 @@ class DeathGame {
         document.querySelectorAll('.screen').forEach(screen => {
             screen.style.display = 'none';
         });
+        
+        // Show and setup game screen
         const gameScreen = document.getElementById('game-screen');
         if (gameScreen) {
             gameScreen.style.display = 'block';
-            gameScreen.style.background = '#1a1f25';  // Set dark background
-            gameScreen.style.minHeight = '100vh';     // Ensure full height
-        }
+            gameScreen.style.background = '#1a1f25';
+            gameScreen.style.minHeight = '100vh';
+            gameScreen.style.width = '100%';
+            gameScreen.style.position = 'relative';
+            
+            // Create and append game container if it doesn't exist
+            let gameContainer = gameScreen.querySelector('.game-container');
+            if (!gameContainer) {
+                gameContainer = document.createElement('div');
+                gameContainer.className = 'game-container';
+                gameScreen.appendChild(gameContainer);
+            }
+            
+            // Store game state
+            localStorage.setItem('gameState', JSON.stringify({
+                roomId: this.roomId,
+                gameId: this.gameId,
+                playerId: this.playerId,
+                playerName: this.playerName,
+                gameStarted: true,
+                players: this.players
+            }));
 
-        // Store game state
-        localStorage.setItem('gameState', JSON.stringify({
-            roomId: this.roomId,
-            gameId: this.gameId,
-            playerId: this.playerId,
-            playerName: this.playerName,
-            gameStarted: true,
-            players: this.players
-        }));
+            // Create game layout
+            const gameLayout = document.createElement('div');
+            gameLayout.className = 'game-layout';
 
-        // Create game layout container
-        const gameLayout = document.createElement('div');
-        gameLayout.className = 'game-layout';
-        gameLayout.style.background = '#1a1f25';  // Ensure dark background
-
-        // Create rules section that will be always visible
-        const rulesSection = document.createElement('div');
-        rulesSection.className = 'rules-section';
-        rulesSection.innerHTML = `
-            <h3>Game Rules</h3>
-            <div class="rules-list"></div>
-        `;
-
-        // Create game content section
-        const gameContent = document.createElement('div');
-        gameContent.className = 'game-content';
-        gameContent.style.background = '#1a1f25';  // Set dark background
-
-        // Create players grid
-        const playersGrid = document.createElement('div');
-        playersGrid.className = 'players-grid';
-        this.players.forEach(player => {
-            const playerCard = document.createElement('div');
-            playerCard.className = `player-card ${player.id === this.playerId ? 'current-player' : ''}`;
-            playerCard.dataset.playerId = player.id;
-            playerCard.innerHTML = `
-                <div class="player-header">
-                    <span class="player-icon">${player.isBot ? '🤖' : '👤'}</span>
-                    <span class="player-name">${player.name}</span>
-                </div>
-                <div class="player-stats">
-                    <div class="player-points">
-                        <span class="points-label">Points:</span>
-                        <span class="points-value">0</span>
-                    </div>
-                    <div class="player-status">Ready</div>
-                </div>
-                <div class="round-details" style="display: none;">
-                    <div class="round-detail-item">
-                        <span class="detail-label">Number:</span>
-                        <span class="detail-value">-</span>
-                    </div>
-                    <div class="round-detail-item">
-                        <span class="detail-label">Distance:</span>
-                        <span class="detail-value">-</span>
-                    </div>
-                    <div class="round-detail-item">
-                        <span class="detail-label">Result:</span>
-                        <span class="detail-value">-</span>
-                    </div>
-                </div>
+            // Create rules section
+            const rulesSection = document.createElement('div');
+            rulesSection.className = 'rules-section';
+            rulesSection.innerHTML = `
+                <h3>Game Rules</h3>
+                <div class="rules-list"></div>
             `;
-            playersGrid.appendChild(playerCard);
-        });
 
-        // Create game board
-        const gameBoard = document.createElement('div');
-        gameBoard.className = 'game-board';
+            // Create game content
+            const gameContent = document.createElement('div');
+            gameContent.className = 'game-content';
 
-        // Add timer display
-        const timerDisplay = document.createElement('div');
-        timerDisplay.className = 'timer-display';
-        timerDisplay.innerHTML = `
-            <span>Time Remaining: </span>
-            <span class="time-remaining">-</span>
-        `;
-        gameBoard.appendChild(timerDisplay);
-
-        // Create number grid
-        const numberGridContainer = document.createElement('div');
-        numberGridContainer.className = 'number-grid';
-        for (let i = 0; i <= 100; i++) {
-            const button = document.createElement('button');
-            button.className = 'number-btn';
-            button.textContent = i;
-            button.dataset.number = i;
-            button.addEventListener('click', () => {
-                document.querySelectorAll('.number-btn').forEach(btn => {
-                    btn.classList.remove('selected');
-                });
-                button.classList.add('selected');
-                this.selectedNumber = i;
-                const submitBtn = document.getElementById('submit-number');
-                if (submitBtn) {
-                    submitBtn.disabled = false;
-                }
+            // Create players grid
+            const playersGrid = document.createElement('div');
+            playersGrid.className = 'players-grid';
+            this.players.forEach(player => {
+                const playerCard = document.createElement('div');
+                playerCard.className = `player-card ${player.id === this.playerId ? 'current-player' : ''}`;
+                playerCard.dataset.playerId = player.id;
+                playerCard.innerHTML = `
+                    <div class="player-header">
+                        <span class="player-icon">${player.isBot ? '🤖' : '👤'}</span>
+                        <span class="player-name">${player.name}</span>
+                    </div>
+                    <div class="player-stats">
+                        <div class="player-points">
+                            <span class="points-label">Points:</span>
+                            <span class="points-value">0</span>
+                        </div>
+                        <div class="player-status">Ready</div>
+                    </div>
+                    <div class="round-details" style="display: none;">
+                        <div class="round-detail-item">
+                            <span class="detail-label">Number:</span>
+                            <span class="detail-value">-</span>
+                        </div>
+                        <div class="round-detail-item">
+                            <span class="detail-label">Distance:</span>
+                            <span class="detail-value">-</span>
+                        </div>
+                        <div class="round-detail-item">
+                            <span class="detail-label">Result:</span>
+                            <span class="detail-value">-</span>
+                        </div>
+                    </div>
+                `;
+                playersGrid.appendChild(playerCard);
             });
-            numberGridContainer.appendChild(button);
-        }
-        gameBoard.appendChild(numberGridContainer);
 
-        // Add submit button
-        const submitButton = document.createElement('button');
-        submitButton.id = 'submit-number';
-        submitButton.className = 'submit-btn';
-        submitButton.disabled = true;
-        submitButton.textContent = 'Submit Number';
-        submitButton.addEventListener('click', () => this.submitNumber());
-        gameBoard.appendChild(submitButton);
+            // Create game board
+            const gameBoard = document.createElement('div');
+            gameBoard.className = 'game-board';
 
-        // Add status message
-        const statusMessage = document.createElement('div');
-        statusMessage.className = 'status-message';
-        statusMessage.textContent = 'Choose your number...';
-        gameBoard.appendChild(statusMessage);
+            // Add timer display
+            const timerDisplay = document.createElement('div');
+            timerDisplay.className = 'timer-display';
+            timerDisplay.innerHTML = `
+                <span>Time Remaining: </span>
+                <span class="time-remaining">-</span>
+            `;
+            gameBoard.appendChild(timerDisplay);
 
-        // Add components to game content
-        gameContent.appendChild(playersGrid);
-        gameContent.appendChild(gameBoard);
+            // Create number grid
+            const numberGridContainer = document.createElement('div');
+            numberGridContainer.className = 'number-grid';
+            for (let i = 0; i <= 100; i++) {
+                const button = document.createElement('button');
+                button.className = 'number-btn';
+                button.textContent = i;
+                button.dataset.number = i;
+                button.addEventListener('click', () => {
+                    document.querySelectorAll('.number-btn').forEach(btn => {
+                        btn.classList.remove('selected');
+                    });
+                    button.classList.add('selected');
+                    this.selectedNumber = i;
+                    const submitBtn = document.getElementById('submit-number');
+                    if (submitBtn) {
+                        submitBtn.disabled = false;
+                    }
+                });
+                numberGridContainer.appendChild(button);
+            }
+            gameBoard.appendChild(numberGridContainer);
 
-        // Add all sections to game layout
-        gameLayout.appendChild(rulesSection);
-        gameLayout.appendChild(gameContent);
+            // Add submit button
+            const submitButton = document.createElement('button');
+            submitButton.id = 'submit-number';
+            submitButton.className = 'submit-btn';
+            submitButton.disabled = true;
+            submitButton.textContent = 'Submit Number';
+            submitButton.addEventListener('click', () => this.submitNumber());
+            gameBoard.appendChild(submitButton);
 
-        // Clear and update game container
-        const gameContainer = document.querySelector('.game-container');
-        if (gameContainer) {
+            // Add status message
+            const statusMessage = document.createElement('div');
+            statusMessage.className = 'status-message';
+            statusMessage.textContent = 'Choose your number...';
+            gameBoard.appendChild(statusMessage);
+
+            // Assemble the game layout
+            gameContent.appendChild(playersGrid);
+            gameContent.appendChild(gameBoard);
+            gameLayout.appendChild(rulesSection);
+            gameLayout.appendChild(gameContent);
+
+            // Clear and update game container
             gameContainer.innerHTML = '';
             gameContainer.appendChild(gameLayout);
-            gameContainer.style.background = '#1a1f25';  // Set dark background
+
+            // Update rules based on player count
+            this.updateRules(this.players.length);
+
+            // Start the round timer
+            this.startRoundTimer();
+
+            // Play game start sound
+            this.playSound('buttonClick');
         }
-
-        // Update rules based on player count
-        this.updateRules(this.players.length);
-
-        // Start the round timer
-        this.startRoundTimer();
-
-        // Play game start sound
-        this.playSound('buttonClick');
     }
 
     startGame() {
