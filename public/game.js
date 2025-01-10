@@ -536,106 +536,75 @@ class DeathGame {
     }
 
     submitNumber() {
-        // Check if player is eliminated
-        const playerCard = document.querySelector(`.player-card[data-player-id="${this.playerId}"]`);
-        if (playerCard && playerCard.classList.contains('eliminated')) {
-            console.log('Player is eliminated and cannot submit numbers');
+        if (this.selectedNumber === undefined) {
+            console.error('No number selected');
             return;
         }
 
-        if (typeof this.selectedNumber === 'undefined') {
-            alert('Please select a number');
-            return;
+        console.log('Submitting number:', this.selectedNumber);
+
+        // Disable submit button to prevent multiple submissions
+        const submitBtn = document.getElementById('submit-number');
+        if (submitBtn) {
+            submitBtn.disabled = true;
+            submitBtn.textContent = 'Waiting for others...';
         }
 
-        const submitButton = document.getElementById('submit-number');
-        const numberBtns = document.querySelectorAll('.number-btn');
-        
-        if (submitButton) {
-            submitButton.disabled = true;
+        // Disable number grid
+        document.querySelectorAll('.number-btn').forEach(btn => {
+            btn.disabled = true;
+        });
+
+        // Update status message
+        const statusMessage = document.querySelector('.status-message');
+        if (statusMessage) {
+            statusMessage.textContent = 'Number submitted! Waiting for other players...';
         }
 
-        // Disable all number buttons
-        numberBtns.forEach(btn => btn.disabled = true);
-
-        // First submit the human player's number
-        this.submitNumberToServer(this.roomId, this.gameId, this.playerId, this.selectedNumber)
-            .then(data => {
-                console.log('Human number submission response:', data);
-                
-                // Update status message
-                const statusMessage = document.querySelector('.status-message');
-                if (statusMessage) {
-                    statusMessage.textContent = `Your number ${this.selectedNumber} has been submitted. Waiting for other players...`;
-                }
-
-                // If all players have already submitted, we don't need to submit bot numbers
-                if (data.allSubmitted) {
-                    console.log('All players have already submitted');
-                    return null;
-                }
-
-                // After successful human submission, submit bot numbers for non-eliminated bots only
-                const botPlayers = this.players.filter(p => {
-                    const botCard = document.querySelector(`.player-card[data-player-id="${p.id}"]`);
-                    return p.isBot && botCard && !botCard.classList.contains('eliminated');
-                });
-
-                if (botPlayers.length > 0) {
-                    console.log('Submitting bot numbers for active bots:', botPlayers);
-                    
-                    // Submit all active bot numbers simultaneously
-                    const botPromises = botPlayers.map(bot => {
-                        // Generate a random number between 0 and 100 for bots
-                        const botNumber = Math.floor(Math.random() * 101);
-                        return this.submitNumberToServer(this.roomId, this.gameId, bot.id, botNumber)
-                            .then(botData => {
-                                console.log(`Bot ${bot.name} submission response:`, botData);
-                                if (botData.alreadySubmitted) {
-                                    console.log(`Bot ${bot.name} had already submitted`);
-                                }
-                                return botData;
-                            });
-                    });
-
-                    return Promise.all(botPromises).then(results => {
-                        // Check if any submission indicates all players have submitted
-                        const allSubmitted = results.some(result => result && result.allSubmitted);
-                        if (allSubmitted) {
-                            console.log('All players have submitted their numbers');
-                            // Update status message
-                            if (statusMessage) {
-                                statusMessage.textContent = 'All numbers submitted. Waiting for round results...';
-                            }
-                        }
-                        return results;
-                    });
-                }
-                return null;
+        // Send number to server
+        this.fetchWithCORS(`${this.serverUrl}/submit-number`, {
+            method: 'POST',
+            body: JSON.stringify({
+                roomId: this.roomId,
+                gameId: this.gameId,
+                playerId: this.playerId,
+                number: this.selectedNumber
             })
-            .then(() => {
-                this.selectedNumber = undefined;
-                this.playSound('submit');
-            })
-            .catch(error => {
-                console.error('Error in number submission:', error);
-                
-                // Re-enable buttons on error if player is not eliminated
-                if (!playerCard || !playerCard.classList.contains('eliminated')) {
-                    if (submitButton) {
-                        submitButton.disabled = false;
+        })
+        .then(response => response.json())
+        .then(data => {
+            console.log('Number submitted successfully:', data);
+            
+            // Update player card to show submitted number
+            const playerCard = document.querySelector(`.player-card[data-player-id="${this.playerId}"]`);
+            if (playerCard) {
+                const roundDetails = playerCard.querySelector('.round-details');
+                if (roundDetails) {
+                    roundDetails.style.display = 'block';
+                    const numberValue = roundDetails.querySelector('.detail-value');
+                    if (numberValue) {
+                        numberValue.textContent = this.selectedNumber;
                     }
-                    numberBtns.forEach(btn => btn.disabled = false);
                 }
-                
-                // Update status message
-                const statusMessage = document.querySelector('.status-message');
-                if (statusMessage) {
-                    statusMessage.textContent = 'Failed to submit number. Please try again.';
+                const playerStatus = playerCard.querySelector('.player-status');
+                if (playerStatus) {
+                    playerStatus.textContent = 'Submitted';
                 }
-                
-                alert('Failed to submit number. Please try again.');
+            }
+        })
+        .catch(error => {
+            console.error('Error submitting number:', error);
+            // Re-enable submit button if there was an error
+            if (submitBtn) {
+                submitBtn.disabled = false;
+                submitBtn.textContent = 'Submit Number';
+            }
+            // Re-enable number grid
+            document.querySelectorAll('.number-btn').forEach(btn => {
+                btn.disabled = false;
             });
+            alert(`Failed to submit number: ${error.message}`);
+        });
     }
 
     // Helper method to submit numbers to the server
@@ -1169,7 +1138,7 @@ class DeathGame {
             `;
             gameBoard.appendChild(timerDisplay);
 
-            // Create players grid
+            // Create players grid inside game board
             const playersGrid = document.createElement('div');
             playersGrid.className = 'players-grid';
             this.players.forEach(player => {
@@ -1205,6 +1174,7 @@ class DeathGame {
                 `;
                 playersGrid.appendChild(playerCard);
             });
+            gameBoard.appendChild(playersGrid);
 
             // Create number grid
             const numberGridContainer = document.createElement('div');
@@ -1245,7 +1215,6 @@ class DeathGame {
             gameBoard.appendChild(statusMessage);
 
             // Assemble the game layout
-            gameContent.appendChild(playersGrid);
             gameContent.appendChild(gameBoard);
             gameLayout.appendChild(rulesSection);
             gameLayout.appendChild(gameContent);
