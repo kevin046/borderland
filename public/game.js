@@ -561,7 +561,7 @@ class DeathGame {
             statusMessage.textContent = 'Number submitted! Waiting for other players...';
         }
 
-        // Send number to server
+        // First submit the human player's number
         this.fetchWithCORS(`${this.serverUrl}/submit-number`, {
             method: 'POST',
             body: JSON.stringify({
@@ -573,7 +573,7 @@ class DeathGame {
         })
         .then(response => response.json())
         .then(data => {
-            console.log('Number submitted successfully:', data);
+            console.log('Human number submitted successfully:', data);
             
             // Update player card to show submitted number
             const playerCard = document.querySelector(`.player-card[data-player-id="${this.playerId}"]`);
@@ -591,9 +591,51 @@ class DeathGame {
                     playerStatus.textContent = 'Submitted';
                 }
             }
+
+            // After human submission, submit bot numbers
+            const botPlayers = this.players.filter(p => p.isBot);
+            console.log('Submitting for bots:', botPlayers);
+
+            // Submit numbers for all bots
+            const botPromises = botPlayers.map(bot => {
+                const botNumber = Math.floor(Math.random() * 101); // Random number 0-100
+                return this.fetchWithCORS(`${this.serverUrl}/submit-number`, {
+                    method: 'POST',
+                    body: JSON.stringify({
+                        roomId: this.roomId,
+                        gameId: this.gameId,
+                        playerId: bot.id,
+                        number: botNumber
+                    })
+                })
+                .then(response => response.json())
+                .then(botData => {
+                    console.log(`Bot ${bot.id} submission:`, botData);
+                    // Update bot's player card
+                    const botCard = document.querySelector(`.player-card[data-player-id="${bot.id}"]`);
+                    if (botCard) {
+                        const botRoundDetails = botCard.querySelector('.round-details');
+                        if (botRoundDetails) {
+                            botRoundDetails.style.display = 'block';
+                            const botNumberValue = botRoundDetails.querySelector('.detail-value');
+                            if (botNumberValue) {
+                                botNumberValue.textContent = botNumber;
+                            }
+                        }
+                        const botStatus = botCard.querySelector('.player-status');
+                        if (botStatus) {
+                            botStatus.textContent = 'Submitted';
+                        }
+                    }
+                    return botData;
+                });
+            });
+
+            // Wait for all bot submissions
+            return Promise.all(botPromises);
         })
         .catch(error => {
-            console.error('Error submitting number:', error);
+            console.error('Error submitting numbers:', error);
             // Re-enable submit button if there was an error
             if (submitBtn) {
                 submitBtn.disabled = false;
@@ -1525,6 +1567,7 @@ class DeathGame {
     }
 
     startRoundTimer() {
+        console.log('Starting round timer');
         // Clear any existing timer
         if (this.timer) {
             clearInterval(this.timer);
@@ -1532,11 +1575,13 @@ class DeathGame {
 
         // Reset the time based on number of players
         this.remainingTime = this.players.length === 5 ? 30 : 300;
+        console.log('Initial time:', this.remainingTime);
 
         // Update timer display
         const timerDisplay = document.querySelector('.time-remaining');
         if (timerDisplay) {
             timerDisplay.textContent = this.remainingTime;
+            console.log('Timer display updated:', this.remainingTime);
         }
 
         // Start the countdown
@@ -1550,10 +1595,36 @@ class DeathGame {
 
             // Handle timer expiration
             if (this.remainingTime <= 0) {
+                console.log('Timer expired');
                 clearInterval(this.timer);
-                // Auto-submit if player hasn't submitted yet
-                if (this.selectedNumber !== undefined) {
+                
+                // Auto-submit for human player if they haven't submitted
+                if (!document.querySelector(`.player-card[data-player-id="${this.playerId}"] .round-details`).style.display === 'block') {
+                    console.log('Auto-submitting for human player');
+                    this.selectedNumber = Math.floor(Math.random() * 101);
                     this.submitNumber();
+                }
+
+                // Auto-submit for bots that haven't submitted
+                const unsubmittedBots = this.players.filter(p => 
+                    p.isBot && 
+                    !document.querySelector(`.player-card[data-player-id="${p.id}"] .round-details`).style.display === 'block'
+                );
+                
+                if (unsubmittedBots.length > 0) {
+                    console.log('Auto-submitting for unsubmitted bots:', unsubmittedBots);
+                    unsubmittedBots.forEach(bot => {
+                        const botNumber = Math.floor(Math.random() * 101);
+                        this.fetchWithCORS(`${this.serverUrl}/submit-number`, {
+                            method: 'POST',
+                            body: JSON.stringify({
+                                roomId: this.roomId,
+                                gameId: this.gameId,
+                                playerId: bot.id,
+                                number: botNumber
+                            })
+                        });
+                    });
                 }
             }
         }, 1000);
