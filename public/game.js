@@ -592,47 +592,45 @@ class DeathGame {
                 }
             }
 
-            // After human submission, submit bot numbers
-            const botPlayers = this.players.filter(p => p.isBot);
-            console.log('Submitting for bots:', botPlayers);
-
-            // Submit numbers for all bots
-            const botPromises = botPlayers.map(bot => {
-                const botNumber = Math.floor(Math.random() * 101); // Random number 0-100
-                return this.fetchWithCORS(`${this.serverUrl}/submit-number`, {
-                    method: 'POST',
-                    body: JSON.stringify({
-                        roomId: this.roomId,
-                        gameId: this.gameId,
-                        playerId: bot.id,
-                        number: botNumber
+            // Immediately submit bot numbers
+            const botSubmissions = this.players
+                .filter(p => p.isBot)
+                .map(bot => {
+                    const botNumber = Math.floor(Math.random() * 101);
+                    return this.fetchWithCORS(`${this.serverUrl}/submit-number`, {
+                        method: 'POST',
+                        body: JSON.stringify({
+                            roomId: this.roomId,
+                            gameId: this.gameId,
+                            playerId: bot.id,
+                            number: botNumber
+                        })
                     })
-                })
-                .then(response => response.json())
-                .then(botData => {
-                    console.log(`Bot ${bot.id} submission:`, botData);
-                    // Update bot's player card
-                    const botCard = document.querySelector(`.player-card[data-player-id="${bot.id}"]`);
-                    if (botCard) {
-                        const botRoundDetails = botCard.querySelector('.round-details');
-                        if (botRoundDetails) {
-                            botRoundDetails.style.display = 'block';
-                            const botNumberValue = botRoundDetails.querySelector('.detail-value');
-                            if (botNumberValue) {
-                                botNumberValue.textContent = botNumber;
+                    .then(response => response.json())
+                    .then(botData => {
+                        console.log(`Bot ${bot.id} submission:`, botData);
+                        // Update bot's player card
+                        const botCard = document.querySelector(`.player-card[data-player-id="${bot.id}"]`);
+                        if (botCard) {
+                            const botRoundDetails = botCard.querySelector('.round-details');
+                            if (botRoundDetails) {
+                                botRoundDetails.style.display = 'block';
+                                const botNumberValue = botRoundDetails.querySelector('.detail-value');
+                                if (botNumberValue) {
+                                    botNumberValue.textContent = botNumber;
+                                }
+                            }
+                            const botStatus = botCard.querySelector('.player-status');
+                            if (botStatus) {
+                                botStatus.textContent = 'Submitted';
                             }
                         }
-                        const botStatus = botCard.querySelector('.player-status');
-                        if (botStatus) {
-                            botStatus.textContent = 'Submitted';
-                        }
-                    }
-                    return botData;
+                        return botData;
+                    });
                 });
-            });
 
-            // Wait for all bot submissions
-            return Promise.all(botPromises);
+            // Wait for all bot submissions to complete
+            return Promise.all(botSubmissions);
         })
         .catch(error => {
             console.error('Error submitting numbers:', error);
@@ -1599,17 +1597,21 @@ class DeathGame {
                 clearInterval(this.timer);
                 
                 // Auto-submit for human player if they haven't submitted
-                if (!document.querySelector(`.player-card[data-player-id="${this.playerId}"] .round-details`).style.display === 'block') {
+                const playerCard = document.querySelector(`.player-card[data-player-id="${this.playerId}"]`);
+                const roundDetails = playerCard?.querySelector('.round-details');
+                if (playerCard && roundDetails && roundDetails.style.display !== 'block') {
                     console.log('Auto-submitting for human player');
                     this.selectedNumber = Math.floor(Math.random() * 101);
                     this.submitNumber();
                 }
 
                 // Auto-submit for bots that haven't submitted
-                const unsubmittedBots = this.players.filter(p => 
-                    p.isBot && 
-                    !document.querySelector(`.player-card[data-player-id="${p.id}"] .round-details`).style.display === 'block'
-                );
+                const unsubmittedBots = this.players.filter(p => {
+                    if (!p.isBot) return false;
+                    const botCard = document.querySelector(`.player-card[data-player-id="${p.id}"]`);
+                    const botRoundDetails = botCard?.querySelector('.round-details');
+                    return botCard && botRoundDetails && botRoundDetails.style.display !== 'block';
+                });
                 
                 if (unsubmittedBots.length > 0) {
                     console.log('Auto-submitting for unsubmitted bots:', unsubmittedBots);
@@ -1623,7 +1625,10 @@ class DeathGame {
                                 playerId: bot.id,
                                 number: botNumber
                             })
-                        });
+                        })
+                        .then(response => response.json())
+                        .then(data => console.log(`Auto-submit for bot ${bot.id}:`, data))
+                        .catch(error => console.error(`Error auto-submitting for bot ${bot.id}:`, error));
                     });
                 }
             }
@@ -1632,7 +1637,26 @@ class DeathGame {
 
     handleRoundResult(data) {
         console.log('Handling round result:', data);
-        const { submissions, average, target, winner, eliminated } = data;
+        if (!data || !data.results) {
+            console.error('Invalid round result data:', data);
+            return;
+        }
+
+        const { round, average, target, results } = data;
+        const winner = results.find(r => r.isWinner)?.playerId;
+        const eliminated = results.filter(r => r.isEliminated).map(r => r.playerId);
+        const submissions = {};
+
+        // Convert results array to submissions object
+        results.forEach(result => {
+            submissions[result.playerId] = {
+                number: result.number,
+                distance: result.distance,
+                points: result.points,
+                isWinner: result.isWinner,
+                isEliminated: result.isEliminated
+            };
+        });
 
         // Update player cards with round results
         Object.entries(submissions).forEach(([playerId, submission]) => {
@@ -1654,11 +1678,11 @@ class DeathGame {
                     // Update result
                     const resultValue = roundDetails.querySelector('.detail-value:last-child');
                     if (resultValue) {
-                        if (playerId === winner) {
+                        if (submission.isWinner) {
                             resultValue.textContent = 'Winner!';
                             resultValue.classList.add('winner');
                             playerCard.classList.add('winner');
-                        } else if (eliminated.includes(playerId)) {
+                        } else if (submission.isEliminated) {
                             resultValue.textContent = 'Eliminated';
                             resultValue.classList.add('negative');
                             playerCard.classList.add('eliminated');
@@ -1672,18 +1696,17 @@ class DeathGame {
                 // Update points
                 const pointsValue = playerCard.querySelector('.points-value');
                 if (pointsValue) {
-                    const points = submission.points;
-                    pointsValue.textContent = points;
-                    pointsValue.className = 'points-value ' + (points >= 0 ? 'positive' : 'negative');
+                    pointsValue.textContent = submission.points;
+                    pointsValue.className = 'points-value ' + (submission.points >= 0 ? 'positive' : 'negative');
                 }
 
                 // Update status
                 const playerStatus = playerCard.querySelector('.player-status');
                 if (playerStatus) {
-                    if (eliminated.includes(playerId)) {
+                    if (submission.isEliminated) {
                         playerStatus.textContent = 'Eliminated';
                         playerStatus.classList.add('eliminated');
-                    } else if (playerId === winner) {
+                    } else if (submission.isWinner) {
                         playerStatus.textContent = 'Winner';
                         playerStatus.classList.add('winner');
                     } else {
@@ -1697,27 +1720,34 @@ class DeathGame {
         const statusMessage = document.querySelector('.status-message');
         if (statusMessage) {
             statusMessage.innerHTML = `
-                Round Complete!<br>
+                Round ${round} Complete!<br>
                 Average: ${average.toFixed(2)}<br>
                 Target: ${target.toFixed(2)}
             `;
         }
 
         // Reset for next round if not eliminated
-        if (!eliminated.includes(this.playerId)) {
+        const isPlayerEliminated = eliminated.includes(this.playerId);
+        if (!isPlayerEliminated) {
             this.selectedNumber = undefined;
             const submitBtn = document.getElementById('submit-number');
             if (submitBtn) {
                 submitBtn.disabled = true;
+                submitBtn.textContent = 'Submit Number';
             }
             // Remove selection from number grid
             document.querySelectorAll('.number-btn').forEach(btn => {
                 btn.classList.remove('selected');
+                btn.disabled = false;
             });
         }
 
-        // Start new round timer
-        this.startRoundTimer();
+        // Start new round timer after a short delay
+        setTimeout(() => {
+            if (!isPlayerEliminated) {
+                this.startRoundTimer();
+            }
+        }, 3000);
     }
 }
 
