@@ -1159,7 +1159,6 @@ class DeathGame {
             rulesSection.innerHTML = `
                 <h3>Game Rules</h3>
                 <div class="rules-list"></div>
-                <div class="game-results"></div>
             `;
 
             // Create game content
@@ -1270,8 +1269,7 @@ class DeathGame {
             this.startRoundTimer();
 
             // Play game start sound
-            const audio = new Audio('/audio/buttonClick.mp3');
-            audio.play().catch(error => console.log('Audio play failed:', error));
+            this.playSound('buttonClick');
         }
     }
 
@@ -1660,28 +1658,6 @@ class DeathGame {
             };
         });
 
-        // Update game results in rules section
-        const rulesSection = document.querySelector('.rules-section');
-        if (rulesSection) {
-            let gameResultsDiv = rulesSection.querySelector('.game-results');
-            if (!gameResultsDiv) {
-                gameResultsDiv = document.createElement('div');
-                gameResultsDiv.className = 'game-results';
-                rulesSection.appendChild(gameResultsDiv);
-            }
-            gameResultsDiv.innerHTML = `
-                <div class="round-header">Round ${round}</div>
-                <div class="result-item">
-                    <span class="result-label">Average:</span>
-                    <span class="result-value">${average.toFixed(2)}</span>
-                </div>
-                <div class="result-item">
-                    <span class="result-label">Target:</span>
-                    <span class="result-value">${target.toFixed(2)}</span>
-                </div>
-            `;
-        }
-
         // Update player cards with round results
         Object.entries(submissions).forEach(([playerId, submission]) => {
             const playerCard = document.querySelector(`.player-card[data-player-id="${playerId}"]`);
@@ -1745,7 +1721,8 @@ class DeathGame {
         if (statusMessage) {
             statusMessage.innerHTML = `
                 Round ${round} Complete!<br>
-                Next round starting in: <span class="next-round-timer">10</span>
+                Average: ${average.toFixed(2)}<br>
+                Target: ${target.toFixed(2)}
             `;
         }
 
@@ -1765,21 +1742,12 @@ class DeathGame {
             });
         }
 
-        // Start 10-second countdown for next round
-        let nextRoundTime = 10;
-        const countdownTimer = setInterval(() => {
-            nextRoundTime--;
-            const timerDisplay = document.querySelector('.next-round-timer');
-            if (timerDisplay) {
-                timerDisplay.textContent = nextRoundTime;
+        // Start new round timer after a short delay
+        setTimeout(() => {
+            if (!isPlayerEliminated) {
+                this.startRoundTimer();
             }
-            if (nextRoundTime <= 0) {
-                clearInterval(countdownTimer);
-                if (!isPlayerEliminated) {
-                    this.startRoundTimer();
-                }
-            }
-        }, 1000);
+        }, 3000);
     }
 }
 
