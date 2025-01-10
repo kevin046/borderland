@@ -1,42 +1,30 @@
 class DeathGame {
     constructor() {
         this.serverUrl = 'https://borderland-1.onrender.com';
-        this.roomId = null;
-        this.gameId = null;
-        this.playerId = null;
-        this.playerName = null;
-        this.currentPlayer = null;
-        this.gameStarted = false;
+        
+        this.pusher = new Pusher('e6a64e50330db39ab319', {
+            cluster: 'us2'
+        });
+        this.setupPusher();
         this.players = [];
-        this.selectedNumber = undefined;
+        this.maxPlayers = 5;
+        this.currentRound = 1;
+        this.timeLimit = 30;
+        this.remainingTime = this.timeLimit;
         this.timer = null;
-        this.remainingTime = 0;
+        this.playerNumbers = {}; // Store submitted numbers
+        this.roundHistory = []; // Store history of all rounds
+        this.selectedSpot = null;
+        this.currentPlayer = null; // Store current player's spot
+        this.gameStarted = false; // Add flag to track if game has started
+        this.roomId = null; // Store current room ID
+        this.playerName = null; // Store player's name
+        
+        this.setupAudio();
+        this.initializeEventListeners();
 
-        // Initialize Pusher
-        this.pusher = new Pusher('your_pusher_key', {
-            cluster: 'ap1',
-            encrypted: true
-        });
-        this.gameChannel = null;
-
-        // Initialize audio
-        this.sounds = {
-            buttonClick: new Audio('/sounds/click.mp3'),
-            submit: new Audio('/sounds/submit.mp3'),
-            win: new Audio('/sounds/win.mp3'),
-            lose: new Audio('/sounds/lose.mp3')
-        };
-
-        // Preload sounds
-        Object.values(this.sounds).forEach(sound => {
-            sound.load();
-        });
-
-        // Add event listeners
-        this.addEventListeners();
-
-        // Check for existing game state
-        this.checkExistingGame();
+        // Add state restoration on page load
+        this.restoreGameState();
     }
 
     // Helper method to make fetch requests with CORS headers
@@ -1171,27 +1159,7 @@ class DeathGame {
             rulesSection.innerHTML = `
                 <h3>Game Rules</h3>
                 <div class="rules-list"></div>
-                <div class="game-results">
-                    <h3>Round Results</h3>
-                    <div class="result-stats">
-                        <div class="stat-item">
-                            <span class="stat-label">Round</span>
-                            <span class="stat-value round-number">1</span>
-                        </div>
-                        <div class="stat-item">
-                            <span class="stat-label">Average</span>
-                            <span class="stat-value average-number">-</span>
-                        </div>
-                        <div class="stat-item">
-                            <span class="stat-label">Target</span>
-                            <span class="stat-value target-number">-</span>
-                        </div>
-                    </div>
-                    <div class="round-timer">
-                        <span class="timer-label">Next Round In:</span>
-                        <span class="round-countdown">10</span>
-                    </div>
-                </div>
+                <div class="game-results"></div>
             `;
 
             // Create game content
@@ -1302,7 +1270,8 @@ class DeathGame {
             this.startRoundTimer();
 
             // Play game start sound
-            this.playSound('buttonClick');
+            const audio = new Audio('/audio/buttonClick.mp3');
+            audio.play().catch(error => console.log('Audio play failed:', error));
         }
     }
 
@@ -1680,15 +1649,6 @@ class DeathGame {
         const eliminated = results.filter(r => r.isEliminated).map(r => r.playerId);
         const submissions = {};
 
-        // Update round results in rules section
-        const roundNumber = document.querySelector('.round-number');
-        const averageNumber = document.querySelector('.average-number');
-        const targetNumber = document.querySelector('.target-number');
-        
-        if (roundNumber) roundNumber.textContent = round;
-        if (averageNumber) averageNumber.textContent = average.toFixed(2);
-        if (targetNumber) targetNumber.textContent = target.toFixed(2);
-
         // Convert results array to submissions object
         results.forEach(result => {
             submissions[result.playerId] = {
@@ -1699,6 +1659,28 @@ class DeathGame {
                 isEliminated: result.isEliminated
             };
         });
+
+        // Update game results in rules section
+        const rulesSection = document.querySelector('.rules-section');
+        if (rulesSection) {
+            let gameResultsDiv = rulesSection.querySelector('.game-results');
+            if (!gameResultsDiv) {
+                gameResultsDiv = document.createElement('div');
+                gameResultsDiv.className = 'game-results';
+                rulesSection.appendChild(gameResultsDiv);
+            }
+            gameResultsDiv.innerHTML = `
+                <div class="round-header">Round ${round}</div>
+                <div class="result-item">
+                    <span class="result-label">Average:</span>
+                    <span class="result-value">${average.toFixed(2)}</span>
+                </div>
+                <div class="result-item">
+                    <span class="result-label">Target:</span>
+                    <span class="result-value">${target.toFixed(2)}</span>
+                </div>
+            `;
+        }
 
         // Update player cards with round results
         Object.entries(submissions).forEach(([playerId, submission]) => {
@@ -1763,8 +1745,7 @@ class DeathGame {
         if (statusMessage) {
             statusMessage.innerHTML = `
                 Round ${round} Complete!<br>
-                Average: ${average.toFixed(2)}<br>
-                Target: ${target.toFixed(2)}
+                Next round starting in: <span class="next-round-timer">10</span>
             `;
         }
 
@@ -1785,23 +1766,20 @@ class DeathGame {
         }
 
         // Start 10-second countdown for next round
-        let countdown = 10;
-        const countdownDisplay = document.querySelector('.round-countdown');
-        if (countdownDisplay) {
-            countdownDisplay.textContent = countdown;
-            const countdownTimer = setInterval(() => {
-                countdown--;
-                if (countdownDisplay) {
-                    countdownDisplay.textContent = countdown;
+        let nextRoundTime = 10;
+        const countdownTimer = setInterval(() => {
+            nextRoundTime--;
+            const timerDisplay = document.querySelector('.next-round-timer');
+            if (timerDisplay) {
+                timerDisplay.textContent = nextRoundTime;
+            }
+            if (nextRoundTime <= 0) {
+                clearInterval(countdownTimer);
+                if (!isPlayerEliminated) {
+                    this.startRoundTimer();
                 }
-                if (countdown <= 0) {
-                    clearInterval(countdownTimer);
-                    if (!isPlayerEliminated) {
-                        this.startRoundTimer();
-                    }
-                }
-            }, 1000);
-        }
+            }
+        }, 1000);
     }
 }
 

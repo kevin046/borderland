@@ -7,65 +7,59 @@
 [Previous content remains exactly the same until the .game-results section...]
 
 .game-results {
-    margin-top: 24px;
-    padding-top: 24px;
-    border-top: 1px solid rgba(255, 255, 255, 0.1);
-}
-
-.game-results h3 {
-    color: #fff;
-    margin-bottom: 16px;
-    font-size: 1.2em;
-}
-
-.result-stats {
-    display: flex;
-    flex-direction: column;
-    gap: 12px;
-    margin-bottom: 20px;
-}
-
-.stat-item {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 12px;
+    margin-top: 20px;
+    padding: 16px;
     background: #353a40;
     border-radius: 8px;
-    transition: all 0.3s ease;
+    border: 1px solid rgba(255, 255, 255, 0.1);
 }
 
-.stat-label {
-    color: rgba(255, 255, 255, 0.7);
-    font-size: 0.9em;
-}
-
-.stat-value {
-    font-family: 'Roboto Mono', monospace;
+.game-results .round-header {
+    font-size: 1.2em;
     font-weight: 600;
     color: #fff;
+    margin-bottom: 12px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
 }
 
-.round-timer {
-    padding: 12px;
-    background: #353a40;
-    border-radius: 8px;
+.game-results .result-item {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-top: 16px;
+    padding: 8px 0;
 }
 
-.timer-label {
+.game-results .result-label {
     color: rgba(255, 255, 255, 0.7);
     font-size: 0.9em;
 }
 
-.round-countdown {
+.game-results .result-value {
+    font-family: 'Roboto Mono', monospace;
+    font-weight: 600;
+    color: #4CAF50;
+}
+
+.next-round-timer {
     font-family: 'Roboto Mono', monospace;
     font-weight: 600;
     color: #4CAF50;
     font-size: 1.2em;
+}
+
+.time-remaining {
+    font-family: 'Roboto Mono', monospace;
+    font-weight: 600;
+    color: #4CAF50;
+    font-size: 1.2em;
+    animation: pulse 1s infinite;
+}
+
+@keyframes pulse {
+    0% { opacity: 1; }
+    50% { opacity: 0.5; }
+    100% { opacity: 1; }
 }
 
 [Rest of the file remains exactly the same...] 
